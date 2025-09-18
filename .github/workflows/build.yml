@@ -1,0 +1,329 @@
+name: QAULTRA C++ 构建和测试
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+
+env:
+  # 自定义环境变量
+  BUILD_TYPE: Release
+  CMAKE_BUILD_PARALLEL_LEVEL: 4
+
+jobs:
+  # Linux构建任务
+  build-linux:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        compiler: [gcc-11, clang-14]
+        build_type: [Debug, Release]
+
+    steps:
+    - name: 检出代码
+      uses: actions/checkout@v4
+      with:
+        submodules: recursive
+
+    - name: 安装系统依赖
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y \
+          cmake \
+          ninja-build \
+          pkg-config \
+          libssl-dev \
+          libtbb-dev \
+          libbenchmark-dev \
+          libgtest-dev \
+          python3-dev \
+          python3-pip \
+          python3-venv
+
+    - name: 安装编译器
+      run: |
+        if [[ "${{ matrix.compiler }}" == "gcc-11" ]]; then
+          sudo apt-get install -y gcc-11 g++-11
+          echo "CC=gcc-11" >> $GITHUB_ENV
+          echo "CXX=g++-11" >> $GITHUB_ENV
+        elif [[ "${{ matrix.compiler }}" == "clang-14" ]]; then
+          sudo apt-get install -y clang-14 clang++-14
+          echo "CC=clang-14" >> $GITHUB_ENV
+          echo "CXX=clang++-14" >> $GITHUB_ENV
+        fi
+
+    - name: 安装MongoDB C++驱动
+      run: |
+        # 安装MongoDB C++驱动依赖
+        sudo apt-get install -y libmongoc-1.0-dev libbson-1.0-dev
+
+        # 从源码编译MongoDB C++驱动
+        git clone https://github.com/mongodb/mongo-cxx-driver.git --branch releases/v3.8 --depth 1
+        cd mongo-cxx-driver
+        mkdir build && cd build
+        cmake .. -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} -DMONGOCXX_OVERRIDE_DEFAULT_INSTALL_PREFIX=OFF
+        make -j$(nproc)
+        sudo make install
+
+    - name: 安装ClickHouse C++客户端
+      run: |
+        git clone https://github.com/ClickHouse/clickhouse-cpp.git --depth 1
+        cd clickhouse-cpp
+        mkdir build && cd build
+        cmake .. -DCMAKE_BUILD_TYPE=${{ matrix.build_type }}
+        make -j$(nproc)
+        sudo make install
+
+    - name: 创建Python虚拟环境
+      run: |
+        python3 -m venv venv
+        source venv/bin/activate
+        pip install --upgrade pip
+        pip install numpy pandas pybind11[global] pytest
+
+    - name: 配置CMake
+      run: |
+        cmake -B build \
+          -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} \
+          -DQAULTRA_ENABLE_SIMD=ON \
+          -DQAULTRA_ENABLE_NATIVE=ON \
+          -DQAULTRA_ENABLE_LTO=ON \
+          -DQAULTRA_BUILD_TESTS=ON \
+          -DQAULTRA_BUILD_BENCHMARKS=ON \
+          -DQAULTRA_BUILD_PYTHON_BINDINGS=ON \
+          -DCMAKE_INSTALL_PREFIX=$PWD/install \
+          -G Ninja
+
+    - name: 构建项目
+      run: |
+        cmake --build build --config ${{ matrix.build_type }} --parallel
+
+    - name: 运行C++测试
+      run: |
+        cd build
+        ctest --output-on-failure --parallel 4
+
+    - name: 运行基准测试
+      run: |
+        cd build
+        ./tests/qaultra_benchmarks --benchmark_min_time=0.1 --benchmark_format=json --benchmark_out=benchmark_results.json
+
+    - name: 安装项目
+      run: |
+        cmake --build build --target install
+
+    - name: 测试Python绑定
+      run: |
+        source venv/bin/activate
+        export PYTHONPATH=$PWD/install/lib/python3/site-packages:$PYTHONPATH
+        python -c "import qaultra_cpp; print('Python绑定测试成功')"
+
+    - name: 内存泄漏检测 (仅Debug模式)
+      if: matrix.build_type == 'Debug'
+      run: |
+        sudo apt-get install -y valgrind
+        cd build
+        valgrind --tool=memcheck --leak-check=full --show-leak-kinds=all --track-origins=yes \
+          --suppressions=../valgrind.supp --error-exitcode=1 ./tests/qaultra_tests
+
+    - name: 上传构建产物
+      uses: actions/upload-artifact@v4
+      with:
+        name: qaultra-cpp-${{ matrix.compiler }}-${{ matrix.build_type }}
+        path: |
+          build/lib*
+          build/bin*
+          install/
+        retention-days: 7
+
+    - name: 上传基准测试结果
+      uses: actions/upload-artifact@v4
+      with:
+        name: benchmark-results-${{ matrix.compiler }}-${{ matrix.build_type }}
+        path: build/benchmark_results.json
+        retention-days: 30
+
+  # macOS构建任务
+  build-macos:
+    runs-on: macos-latest
+
+    steps:
+    - name: 检出代码
+      uses: actions/checkout@v4
+      with:
+        submodules: recursive
+
+    - name: 安装依赖
+      run: |
+        brew update
+        brew install cmake ninja tbb google-benchmark googletest mongodb-cxx-driver
+        brew install python@3.11
+        pip3 install numpy pandas pybind11
+
+    - name: 配置CMake
+      run: |
+        cmake -B build \
+          -DCMAKE_BUILD_TYPE=Release \
+          -DQAULTRA_ENABLE_SIMD=ON \
+          -DQAULTRA_BUILD_TESTS=ON \
+          -DQAULTRA_BUILD_PYTHON_BINDINGS=ON \
+          -G Ninja
+
+    - name: 构建和测试
+      run: |
+        cmake --build build --parallel
+        cd build && ctest --output-on-failure
+
+  # Windows构建任务
+  build-windows:
+    runs-on: windows-latest
+
+    steps:
+    - name: 检出代码
+      uses: actions/checkout@v4
+      with:
+        submodules: recursive
+
+    - name: 安装依赖
+      run: |
+        choco install cmake ninja
+        pip install numpy pandas pybind11
+
+    - name: 配置MSVC环境
+      uses: ilammy/msvc-dev-cmd@v1
+
+    - name: 配置CMake
+      run: |
+        cmake -B build -DCMAKE_BUILD_TYPE=Release -DQAULTRA_BUILD_TESTS=ON -G Ninja
+
+    - name: 构建和测试
+      run: |
+        cmake --build build --parallel
+        cd build && ctest --output-on-failure -C Release
+
+  # 代码质量检查
+  code-quality:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: 检出代码
+      uses: actions/checkout@v4
+
+    - name: 安装clang-tidy和cppcheck
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y clang-tidy cppcheck
+
+    - name: 运行clang-tidy
+      run: |
+        find src include -name "*.cpp" -o -name "*.hpp" | xargs clang-tidy -p build
+
+    - name: 运行cppcheck
+      run: |
+        cppcheck --enable=all --inconclusive --xml --xml-version=2 \
+          --suppress=missingInclude --suppress=unusedFunction \
+          src/ include/ 2> cppcheck.xml
+
+    - name: 上传代码质量报告
+      uses: actions/upload-artifact@v4
+      with:
+        name: code-quality-report
+        path: cppcheck.xml
+
+  # 文档生成
+  documentation:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: 检出代码
+      uses: actions/checkout@v4
+
+    - name: 安装Doxygen
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y doxygen graphviz
+
+    - name: 生成文档
+      run: |
+        doxygen Doxyfile
+
+    - name: 部署到GitHub Pages
+      if: github.ref == 'refs/heads/main'
+      uses: peaceiris/actions-gh-pages@v3
+      with:
+        github_token: ${{ secrets.GITHUB_TOKEN }}
+        publish_dir: ./docs/html
+
+  # 性能监控
+  performance-monitoring:
+    runs-on: ubuntu-latest
+    needs: build-linux
+    if: github.ref == 'refs/heads/main'
+
+    steps:
+    - name: 检出代码
+      uses: actions/checkout@v4
+
+    - name: 下载基准测试结果
+      uses: actions/download-artifact@v4
+      with:
+        name: benchmark-results-gcc-11-Release
+        path: ./benchmarks
+
+    - name: 生成性能报告
+      run: |
+        python3 scripts/generate_performance_report.py \
+          --input ./benchmarks/benchmark_results.json \
+          --output performance_report.html
+
+    - name: 上传性能报告
+      uses: actions/upload-artifact@v4
+      with:
+        name: performance-report
+        path: performance_report.html
+
+  # 发布任务
+  release:
+    runs-on: ubuntu-latest
+    needs: [build-linux, build-macos, build-windows]
+    if: startsWith(github.ref, 'refs/tags/v')
+
+    steps:
+    - name: 检出代码
+      uses: actions/checkout@v4
+
+    - name: 下载所有构建产物
+      uses: actions/download-artifact@v4
+
+    - name: 创建发布包
+      run: |
+        mkdir -p release
+        tar -czf release/qaultra-cpp-linux-x64.tar.gz qaultra-cpp-gcc-11-Release/
+        zip -r release/qaultra-cpp-source.zip . -x ".git/*" "build/*" "*.tar.gz" "*.zip"
+
+    - name: 创建GitHub Release
+      uses: softprops/action-gh-release@v1
+      with:
+        files: release/*
+        draft: false
+        prerelease: false
+        generate_release_notes: true
+        body: |
+          ## QAULTRA C++ ${{ github.ref_name }} 发布说明
+
+          ### 主要更新
+          - 完整的C++量化交易系统实现
+          - 高性能SIMD优化
+          - 完整的Python绑定
+          - 支持MongoDB和ClickHouse数据库
+
+          ### 安装说明
+          请参考README.md中的安装指南。
+
+          ### 系统要求
+          - C++20兼容编译器
+          - CMake 3.20+
+          - Python 3.8+ (用于Python绑定)
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

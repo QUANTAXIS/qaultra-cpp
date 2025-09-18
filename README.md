@@ -1,8 +1,47 @@
-# QAULTRA C++ - High-Performance Quantitative Trading System
+# QAULTRA C++ - 高性能量化交易系统
 
-**Complete C++ port of QARS (QUANTAXIS RS) with maximum performance optimizations**
+**QARS (QUANTAXIS RS) 的完整C++移植版本，具备最大化性能优化**
 
-QAULTRA C++ is a complete port of the QARS (QUANTAXIS RS) quantitative trading system from Rust to C++, designed for ultra-high-performance algorithmic trading, backtesting, and portfolio management.
+QAULTRA C++ 是将 QARS (QUANTAXIS RS) 量化交易系统从 Rust 完整移植到 C++ 的版本，专为超高性能算法交易、回测和投资组合管理而设计。
+
+[![构建状态](https://github.com/quantaxis/qaultra-cpp/workflows/构建和测试/badge.svg)](https://github.com/quantaxis/qaultra-cpp/actions)
+[![许可证](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![C++标准](https://img.shields.io/badge/C%2B%2B-20-blue.svg)](https://isocpp.org/)
+[![Python版本](https://img.shields.io/badge/Python-3.8%2B-blue.svg)](https://www.python.org/)
+
+## 🚀 核心特性
+
+### 💨 极致性能
+- **SIMD优化**: 支持 AVX/AVX2/AVX-512 向量化计算
+- **零拷贝操作**: 内存映射文件和零拷贝数据结构
+- **无锁算法**: 并发数据结构，最小化竞争
+- **原生CPU优化**: 编译时CPU特性检测
+- **内存池分配**: 预分配对象池用于频繁操作
+
+### 📈 完整交易基础设施
+- **账户管理**: 多资产投资组合跟踪，实时盈亏计算
+- **订单管理**: 完整订单生命周期和撮合引擎
+- **市场数据**: 基于Arrow的列式存储历史数据
+- **回测引擎**: 事件驱动回测，真实执行模拟
+- **策略框架**: 可插拔策略开发系统
+
+### 🔗 协议支持
+- **QIFI**: 量化投资格式接口
+- **MIFI**: 市场信息格式接口
+- **TIFI**: 交易信息格式接口
+- **标准协议**: 支持FIX, REST, WebSocket
+
+### 🐍 Python集成
+- **pybind11绑定**: 高性能Python接口
+- **NumPy集成**: 直接数组访问，无需拷贝
+- **Pandas兼容**: 基于Arrow后端的DataFrame操作
+- **Jupyter支持**: 交互式分析和可视化
+
+### 🗄️ 数据连接器
+- **MongoDB**: 投资组合和交易历史存储
+- **ClickHouse**: 高性能分析数据库
+- **Arrow/Parquet**: 列式数据存储和处理
+- **CSV/JSON**: 标准格式支持
 
 ## Features
 
