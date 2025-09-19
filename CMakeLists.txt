@@ -42,6 +42,7 @@ endif()
 set(UNIFIED_SOURCES
     # 统一数据类型系统
     "src/data/unified_datatype.cpp"
+    "src/data/datatype_simple.cpp"
 
     # 统一账户系统
     "src/account/unified_account.cpp"
@@ -57,9 +58,9 @@ set(UNIFIED_SOURCES
     # 分析模块
     "src/analysis/performance_analyzer.cpp"
 
-    # 连接器
+    # 连接器（暂时禁用有问题的qa_connector）
     "src/connector/database_connector.cpp"
-    "src/connector/qa_connector.cpp"
+    # "src/connector/qa_connector.cpp"  # 暂时禁用，存在依赖问题
 )
 
 # 可选的完整功能源文件
@@ -114,7 +115,47 @@ set_target_properties(qaultra PROPERTIES
 
 # 测试
 if(QAULTRA_BUILD_TESTS)
-    # 基础测试
+    # 查找Google Test框架
+    find_package(GTest QUIET)
+    find_package(benchmark QUIET)
+
+    if(GTest_FOUND)
+        # 综合测试套件
+        add_executable(qaultra_tests
+            tests/test_main.cpp
+            tests/test_unified_account.cpp
+            tests/test_position.cpp
+            tests/test_order.cpp
+            tests/test_market_preset.cpp
+            tests/test_qifi_protocol.cpp
+            tests/test_unified_datatype.cpp
+            tests/test_unified_backtest_engine.cpp
+            tests/test_event_engine.cpp
+            tests/test_trading_integration.cpp
+            tests/test_portfolio_management.cpp
+            tests/test_performance_metrics.cpp
+            tests/test_thread_safety.cpp
+        )
+        target_link_libraries(qaultra_tests qaultra GTest::gtest GTest::gtest_main)
+
+        # 启用Google Test发现
+        include(GoogleTest)
+        gtest_discover_tests(qaultra_tests)
+    endif()
+
+    if(benchmark_FOUND)
+        # 性能基准测试
+        add_executable(qaultra_benchmarks
+            tests/benchmark_main.cpp
+            tests/benchmark_account.cpp
+            tests/benchmark_market.cpp
+            tests/benchmark_simd.cpp
+            tests/benchmark_memory.cpp
+        )
+        target_link_libraries(qaultra_benchmarks qaultra benchmark::benchmark benchmark::benchmark_main)
+    endif()
+
+    # 基础测试（不依赖外部框架）
     add_executable(progressive_test tests/test_minimal.cpp)
     target_link_libraries(progressive_test qaultra)
 

@@ -111,11 +111,11 @@ UnifiedBacktestResults UnifiedBacktestResults::from_json(const nlohmann::json& j
     if (j.contains("var_95")) results.var_95 = j["var_95"];
     if (j.contains("cvar_95")) results.cvar_95 = j["cvar_95"];
     if (j.contains("information_ratio")) results.information_ratio = j["information_ratio"];
-    if (j.contains("equity_curve")) results.equity_curve = j["equity_curve"];
-    if (j.contains("daily_returns")) results.daily_returns = j["daily_returns"];
-    if (j.contains("benchmark_returns")) results.benchmark_returns = j["benchmark_returns"];
-    if (j.contains("trade_dates")) results.trade_dates = j["trade_dates"];
-    if (j.contains("strategy_metrics")) results.strategy_metrics = j["strategy_metrics"];
+    if (j.contains("equity_curve")) results.equity_curve = j["equity_curve"].get<std::vector<double>>();
+    if (j.contains("daily_returns")) results.daily_returns = j["daily_returns"].get<std::vector<double>>();
+    if (j.contains("benchmark_returns")) results.benchmark_returns = j["benchmark_returns"].get<std::vector<double>>();
+    if (j.contains("trade_dates")) results.trade_dates = j["trade_dates"].get<std::vector<std::string>>();
+    if (j.contains("strategy_metrics")) results.strategy_metrics = j["strategy_metrics"].get<std::unordered_map<std::string, double>>();
     return results;
 }
 
@@ -257,7 +257,7 @@ void UnifiedSMAStrategy::handle_data(UnifiedStrategyContext& context) {
 
         double current_price = context.get_price(symbol);
         auto position = context.get_position(symbol);
-        bool has_position = position && (position.value().volume_long > 0);
+        bool has_position = position && (position.value().volume_long() > 0);
 
         if (fast_ma > slow_ma && !has_position && context.get_cash() > current_price * 100) {
             double buy_amount = context.get_cash() * 0.2;
@@ -274,8 +274,8 @@ void UnifiedSMAStrategy::handle_data(UnifiedStrategyContext& context) {
             }
         } else if (fast_ma < slow_ma && has_position) {
             try {
-                context.account->sell(symbol, position.value().volume_long, current_price);
-                context.log("SMA卖出 " + symbol + " " + std::to_string(position.value().volume_long) + "股");
+                context.account->sell(symbol, position.value().volume_long(), current_price);
+                context.log("SMA卖出 " + symbol + " " + std::to_string(position.value().volume_long()) + "股");
                 positions_[symbol] = false;
             } catch (const std::exception& e) {
                 context.log("SMA卖出失败: " + std::string(e.what()), "ERROR");
@@ -329,7 +329,7 @@ void UnifiedMomentumStrategy::handle_data(UnifiedStrategyContext& context) {
         double momentum = (current_price - past_price) / past_price;
 
         auto position = context.get_position(symbol);
-        bool has_position = position && (position.value().volume_long > 0);
+        bool has_position = position && (position.value().volume_long() > 0);
 
         if (momentum > threshold_ && !has_position && context.get_cash() > current_price * 100) {
             double buy_amount = context.get_cash() * 0.15;
@@ -345,7 +345,7 @@ void UnifiedMomentumStrategy::handle_data(UnifiedStrategyContext& context) {
             }
         } else if (momentum < -threshold_ && has_position) {
             try {
-                context.account->sell(symbol, position.value().volume_long, current_price);
+                context.account->sell(symbol, position.value().volume_long(), current_price);
                 context.log("动量卖出 " + symbol + " (动量:" + std::to_string(momentum) + ")");
             } catch (const std::exception& e) {
                 context.log("动量卖出失败: " + std::string(e.what()), "ERROR");
@@ -409,7 +409,7 @@ void UnifiedMeanReversionStrategy::handle_data(UnifiedStrategyContext& context) 
         double z_score = (current_price - mean) / std_dev;
 
         auto position = context.get_position(symbol);
-        bool has_position = position && (position.value().volume_long > 0);
+        bool has_position = position && (position.value().volume_long() > 0);
 
         if (z_score < -z_score_threshold_ && !has_position && context.get_cash() > current_price * 100) {
             double buy_amount = context.get_cash() * 0.1;
@@ -425,7 +425,7 @@ void UnifiedMeanReversionStrategy::handle_data(UnifiedStrategyContext& context) 
             }
         } else if (z_score > z_score_threshold_ && has_position) {
             try {
-                context.account->sell(symbol, position.value().volume_long, current_price);
+                context.account->sell(symbol, position.value().volume_long(), current_price);
                 context.log("均值回归卖出 " + symbol + " (Z分数:" + std::to_string(z_score) + ")");
             } catch (const std::exception& e) {
                 context.log("均值回归卖出失败: " + std::string(e.what()), "ERROR");

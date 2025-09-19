@@ -7,13 +7,26 @@ find_package(benchmark REQUIRED)
 # Include directories
 include_directories(${CMAKE_SOURCE_DIR}/include)
 
-# Common test sources
+# Common test sources for unified system
 set(TEST_SOURCES
     test_main.cpp
-    test_account.cpp
+    # 核心组件测试
+    test_unified_account.cpp
+    test_position.cpp
     test_order.cpp
-    test_kline.cpp
-    test_qadata.cpp
+    test_market_preset.cpp
+    test_qifi_protocol.cpp
+    # 数据类型测试
+    test_unified_datatype.cpp
+    # 引擎测试
+    test_unified_backtest_engine.cpp
+    test_event_engine.cpp
+    # 集成测试
+    test_trading_integration.cpp
+    test_portfolio_management.cpp
+    # 性能相关测试
+    test_performance_metrics.cpp
+    test_thread_safety.cpp
 )
 
 # Create test executable
