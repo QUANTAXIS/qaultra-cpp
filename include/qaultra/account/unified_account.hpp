@@ -88,6 +88,14 @@ public:
      */
     ~UnifiedAccount() = default;
 
+    // 禁用拷贝构造和拷贝赋值
+    UnifiedAccount(const UnifiedAccount&) = delete;
+    UnifiedAccount& operator=(const UnifiedAccount&) = delete;
+
+    // 启用移动构造和移动赋值
+    UnifiedAccount(UnifiedAccount&& other) noexcept;
+    UnifiedAccount& operator=(UnifiedAccount&& other) noexcept;
+
     // 账户基本信息
     const std::string& get_account_cookie() const { return account_cookie_; }
     const std::string& get_portfolio_cookie() const { return portfolio_cookie_; }
@@ -306,8 +314,8 @@ public:
     AccountManager& operator=(const AccountManager&) = delete;
 
     // 启用移动构造和移动赋值
-    AccountManager(AccountManager&&) = default;
-    AccountManager& operator=(AccountManager&&) = default;
+    AccountManager(AccountManager&& other) noexcept;
+    AccountManager& operator=(AccountManager&& other) noexcept;
 
     // 账户管理
     void add_account(std::unique_ptr<UnifiedAccount> account);

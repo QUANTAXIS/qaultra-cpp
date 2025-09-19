@@ -197,6 +197,62 @@ UnifiedAccount::UnifiedAccount(const std::string& account_cookie,
     market_preset_ = MarketPreset::get_stock_preset();
 }
 
+// Move constructor
+UnifiedAccount::UnifiedAccount(UnifiedAccount&& other) noexcept
+    : account_cookie_(std::move(other.account_cookie_))
+    , portfolio_cookie_(std::move(other.portfolio_cookie_))
+    , user_cookie_(std::move(other.user_cookie_))
+    , init_cash_(other.init_cash_)
+    , auto_reload_(other.auto_reload_)
+    , cash_(other.cash_.load())
+    , frozen_cash_(other.frozen_cash_.load())
+    , total_value_(other.total_value_.load())
+    , float_pnl_(other.float_pnl_.load())
+    , positions_(std::move(other.positions_))
+    , orders_(std::move(other.orders_))
+    , trade_history_(std::move(other.trade_history_))
+    , history_slices_(std::move(other.history_slices_))
+    , market_preset_(std::move(other.market_preset_))
+    , market_prices_(std::move(other.market_prices_))
+    , order_id_counter_(other.order_id_counter_.load())
+    , trade_id_counter_(other.trade_id_counter_.load())
+    , performance_monitoring_(other.performance_monitoring_)
+    , statistics_(std::move(other.statistics_))
+    , order_callback_(std::move(other.order_callback_))
+    , trade_callback_(std::move(other.trade_callback_))
+    , position_callback_(std::move(other.position_callback_))
+{
+}
+
+// Move assignment operator
+UnifiedAccount& UnifiedAccount::operator=(UnifiedAccount&& other) noexcept {
+    if (this != &other) {
+        account_cookie_ = std::move(other.account_cookie_);
+        portfolio_cookie_ = std::move(other.portfolio_cookie_);
+        user_cookie_ = std::move(other.user_cookie_);
+        init_cash_ = other.init_cash_;
+        auto_reload_ = other.auto_reload_;
+        cash_.store(other.cash_.load());
+        frozen_cash_.store(other.frozen_cash_.load());
+        total_value_.store(other.total_value_.load());
+        float_pnl_.store(other.float_pnl_.load());
+        positions_ = std::move(other.positions_);
+        orders_ = std::move(other.orders_);
+        trade_history_ = std::move(other.trade_history_);
+        history_slices_ = std::move(other.history_slices_);
+        market_preset_ = std::move(other.market_preset_);
+        market_prices_ = std::move(other.market_prices_);
+        order_id_counter_.store(other.order_id_counter_.load());
+        trade_id_counter_.store(other.trade_id_counter_.load());
+        performance_monitoring_ = other.performance_monitoring_;
+        statistics_ = std::move(other.statistics_);
+        order_callback_ = std::move(other.order_callback_);
+        trade_callback_ = std::move(other.trade_callback_);
+        position_callback_ = std::move(other.position_callback_);
+    }
+    return *this;
+}
+
 double UnifiedAccount::get_cash() const {
     return cash_.load();
 }
@@ -216,8 +272,9 @@ double UnifiedAccount::get_market_value() const {
     for (const auto& [code, position] : positions_) {
         auto price_it = market_prices_.find(code);
         double current_price = (price_it != market_prices_.end()) ?
-                              price_it->second : position.price;
-        market_value += position.volume * current_price;
+                              price_it->second : position.lastest_price;
+        double net_volume = position.volume_net();
+        market_value += net_volume * current_price;
     }
 
     return market_value;
@@ -239,11 +296,13 @@ double UnifiedAccount::get_float_pnl() const {
         auto price_it = market_prices_.find(code);
         if (price_it != market_prices_.end()) {
             double current_price = price_it->second;
-            pnl += (current_price - position.price) * position.volume;
+            double net_volume = position.volume_net();
+            double avg_price = net_volume > 0 ? position.avg_price_long() : position.avg_price_short();
+            pnl += (current_price - avg_price) * net_volume;
         }
     }
 
-    float_pnl_.store(pnl);
+    // Note: this should be called from non-const method to store result
     return pnl;
 }
 
@@ -257,10 +316,10 @@ std::string UnifiedAccount::buy(const std::string& code, double volume, double p
     order.instrument_id = code;
     order.direction = "BUY";
     order.offset = market_preset_.is_stock ? "OPEN" : "OPEN";
-    order.volume = volume;
-    order.price = price;
+    order.volume_orign = volume;
+    order.price_order = price;
     order.status = "PENDING";
-    order.datetime = std::to_string(std::chrono::duration_cast<std::chrono::seconds>(
+    order.order_time = std::to_string(std::chrono::duration_cast<std::chrono::seconds>(
         std::chrono::system_clock::now().time_since_epoch()).count());
 
     // 检查资金
@@ -298,7 +357,7 @@ std::string UnifiedAccount::sell(const std::string& code, double volume, double 
     {
         std::lock_guard<std::mutex> lock(positions_mutex_);
         auto pos_it = positions_.find(code);
-        if (pos_it == positions_.end() || pos_it->second.volume < volume) {
+        if (pos_it == positions_.end() || pos_it->second.volume_net() < volume) {
             return "";  // 持仓不足
         }
     }
@@ -308,10 +367,10 @@ std::string UnifiedAccount::sell(const std::string& code, double volume, double 
     order.instrument_id = code;
     order.direction = "SELL";
     order.offset = market_preset_.is_stock ? "CLOSE" : "CLOSE";
-    order.volume = volume;
-    order.price = price;
+    order.volume_orign = volume;
+    order.price_order = price;
     order.status = "PENDING";
-    order.datetime = std::to_string(std::chrono::duration_cast<std::chrono::seconds>(
+    order.order_time = std::to_string(std::chrono::duration_cast<std::chrono::seconds>(
         std::chrono::system_clock::now().time_since_epoch()).count());
 
     {
@@ -485,9 +544,11 @@ void UnifiedAccount::add_trade(const std::string& order_id, double price, double
 
     // 更新资金
     if (order->direction == "BUY") {
-        cash_.fetch_sub(price * volume + commission);
+        double current_cash = cash_.load();
+        cash_.store(current_cash - (price * volume + commission));
     } else {
-        cash_.fetch_add(price * volume - commission - tax);
+        double current_cash = cash_.load();
+        cash_.store(current_cash + (price * volume - commission - tax));
     }
 
     // 解冻资金
@@ -495,7 +556,7 @@ void UnifiedAccount::add_trade(const std::string& order_id, double price, double
 
     // 更新订单状态
     order->status = "FILLED";
-    order->filled_volume += volume;
+    order->volume_fill += volume;
 
     // 添加到成交历史
     {
@@ -541,9 +602,12 @@ void UnifiedAccount::daily_settle() {
             auto price_it = market_prices_.find(code);
             if (price_it != market_prices_.end()) {
                 double current_price = price_it->second;
-                double daily_pnl = (current_price - position.price) * position.volume;
-                cash_.fetch_add(daily_pnl);
-                position.price = current_price;  // 更新持仓成本
+                double net_volume = position.volume_net();
+                double avg_price = net_volume > 0 ? position.avg_price_long() : position.avg_price_short();
+                double daily_pnl = (current_price - avg_price) * net_volume;
+                double current_cash = cash_.load();
+                cash_.store(current_cash + daily_pnl);
+                position.on_price_change(current_price, "");  // 更新价格
             }
         }
     }
@@ -556,8 +620,8 @@ void UnifiedAccount::calculate_pnl() {
 
 bool UnifiedAccount::check_risk_before_order(const Order& order) const {
     // 基础风险检查
-    if (order.volume <= 0) return false;
-    if (order.price < 0) return false;
+    if (order.volume_orign <= 0) return false;
+    if (order.price_order < 0) return false;
 
     // 资金检查
     if (order.direction == "BUY") {
@@ -570,7 +634,7 @@ bool UnifiedAccount::check_risk_before_order(const Order& order) const {
     // 持仓检查
     if (order.direction == "SELL" && order.offset == "CLOSE") {
         auto position = get_position(order.instrument_id);
-        if (!position.has_value() || position->volume < order.volume) {
+        if (!position.has_value() || position->volume_net() < order.volume_orign) {
             return false;
         }
     }
@@ -587,7 +651,9 @@ double UnifiedAccount::get_margin_usage() const {
     double margin_used = 0.0;
 
     for (const auto& [code, position] : positions_) {
-        double position_value = position.volume * position.price;
+        double net_volume = position.volume_net();
+        double avg_price = net_volume > 0 ? position.avg_price_long() : position.avg_price_short();
+        double position_value = net_volume * avg_price;
         margin_used += position_value * market_preset_.margin_ratio;
     }
 
@@ -620,21 +686,21 @@ protocol::qifi::QIFI UnifiedAccount::get_qifi() const {
     qifi.account_cookie = account_cookie_;
     qifi.portfolio = portfolio_cookie_;
     qifi.investor_name = user_cookie_;
-    qifi.available = get_available_cash();
-    qifi.balance = get_cash();
-    qifi.market_value = get_market_value();
-    qifi.close_profit = get_pnl();
-    qifi.float_profit = get_float_pnl();
+    qifi.accounts.available = get_available_cash();
+    qifi.accounts.balance = get_cash();
+    qifi.accounts.position_profit = get_market_value();
+    qifi.accounts.close_profit = get_pnl();
+    qifi.accounts.float_profit = get_float_pnl();
 
     // 转换持仓信息
     auto positions = get_positions();
     for (const auto& [code, position] : positions) {
         protocol::qifi::Position qifi_pos;
         qifi_pos.instrument_id = code;
-        qifi_pos.volume_long = position.volume > 0 ? position.volume : 0;
-        qifi_pos.volume_short = position.volume < 0 ? -position.volume : 0;
-        qifi_pos.price_long = position.price;
-        qifi_pos.price_short = position.price;
+        qifi_pos.volume_long = position.volume_long();
+        qifi_pos.volume_short = position.volume_short();
+        qifi_pos.open_cost_long = position.position_cost_long;
+        qifi_pos.open_cost_short = position.position_cost_short;
         qifi.positions[code] = qifi_pos;
     }
 
@@ -645,7 +711,7 @@ void UnifiedAccount::from_qifi(const protocol::qifi::QIFI& qifi_data) {
     account_cookie_ = qifi_data.account_cookie;
     portfolio_cookie_ = qifi_data.portfolio;
     user_cookie_ = qifi_data.investor_name;
-    cash_.store(qifi_data.balance);
+    cash_.store(qifi_data.accounts.balance);
 
     // 清空当前持仓
     {
@@ -656,8 +722,12 @@ void UnifiedAccount::from_qifi(const protocol::qifi::QIFI& qifi_data) {
         for (const auto& [code, qifi_pos] : qifi_data.positions) {
             Position position;
             position.instrument_id = code;
-            position.volume = qifi_pos.volume_long - qifi_pos.volume_short;
-            position.price = position.volume > 0 ? qifi_pos.price_long : qifi_pos.price_short;
+            position.volume_long_today = qifi_pos.volume_long_today;
+            position.volume_long_his = qifi_pos.volume_long_his;
+            position.volume_short_today = qifi_pos.volume_short_today;
+            position.volume_short_his = qifi_pos.volume_short_his;
+            position.position_cost_long = qifi_pos.position_cost_long;
+            position.position_cost_short = qifi_pos.position_cost_short;
             positions_[code] = position;
         }
     }
@@ -780,53 +850,32 @@ void UnifiedAccount::update_position_from_trade(const std::string& code, double 
         // 新建仓位
         Position position;
         position.instrument_id = code;
-        position.volume = is_buy ? volume : -volume;
-        position.price = price;
+        if (is_buy) {
+            position.volume_long_today = volume;
+            position.position_price_long = price;
+        } else {
+            position.volume_short_today = volume;
+            position.position_price_short = price;
+        }
         positions_[code] = position;
     } else {
         // 更新现有仓位
         Position& position = pos_it->second;
-        double new_volume = position.volume + (is_buy ? volume : -volume);
+        double current_net_volume = position.volume_net();
+        double new_volume = current_net_volume + (is_buy ? volume : -volume);
 
         if (std::abs(new_volume) < 1e-9) {
             // 仓位平完，删除
             positions_.erase(pos_it);
         } else {
-            // 更新仓位
-            double current_vol = position.volume_long - position.volume_short;
-            if ((current_vol > 0 && is_buy) || (current_vol < 0 && !is_buy)) {
-                // 同向加仓，更新平均成本
-                double current_price = (position.volume_long > 0) ? position.position_price_long : position.position_price_short;
-                double total_value = current_vol * current_price + (is_buy ? volume : -volume) * price;
-                if (is_buy) {
-                    position.volume_long = std::max(0.0, new_volume);
-                    position.volume_short = std::max(0.0, -new_volume);
-                    if (position.volume_long > 0) position.position_price_long = total_value / position.volume_long;
-                } else {
-                    position.volume_long = std::max(0.0, new_volume);
-                    position.volume_short = std::max(0.0, -new_volume);
-                    if (position.volume_short > 0) position.position_price_short = total_value / position.volume_short;
-                }
-            } else {
-                // 反向平仓
-                if (is_buy) {
-                    position.volume_long = std::max(0.0, new_volume);
-                    position.volume_short = std::max(0.0, -new_volume);
-                } else {
-                    position.volume_long = std::max(0.0, new_volume);
-                    position.volume_short = std::max(0.0, -new_volume);
-                }
-                double new_current_vol = position.volume_long - position.volume_short;
-                double old_current_vol = pos_it->second.volume_long - pos_it->second.volume_short;
-                if (std::abs(new_current_vol) > std::abs(old_current_vol)) {
-                    // 超量平仓，变向
-                    if (is_buy && position.volume_long > 0) {
-                        position.position_price_long = price;
-                    } else if (!is_buy && position.volume_short > 0) {
-                        position.position_price_short = price;
-                    }
-                }
-            }
+            // 使用Position的receive_deal方法处理成交，它会正确处理持仓的更新
+            std::string direction = is_buy ? "BUY" : "SELL";
+            std::string offset = market_preset_.is_stock ? (is_buy ? "OPEN" : "CLOSE") : "OPEN";
+            std::string trade_id = "TRADE_" + std::to_string(trade_id_counter_.fetch_add(1));
+            std::string datetime = std::to_string(std::chrono::duration_cast<std::chrono::seconds>(
+                std::chrono::system_clock::now().time_since_epoch()).count());
+
+            position.receive_deal(trade_id, direction, offset, volume, price, datetime);
         }
     }
 }
@@ -959,6 +1008,20 @@ void AccountManager::add_account(std::unique_ptr<UnifiedAccount> account) {
     accounts_[account_cookie] = std::move(account);
 }
 
+// AccountManager move constructor
+AccountManager::AccountManager(AccountManager&& other) noexcept
+    : accounts_(std::move(other.accounts_))
+{
+}
+
+// AccountManager move assignment operator
+AccountManager& AccountManager::operator=(AccountManager&& other) noexcept {
+    if (this != &other) {
+        accounts_ = std::move(other.accounts_);
+    }
+    return *this;
+}
+
 void AccountManager::remove_account(const std::string& account_cookie) {
     std::lock_guard<std::mutex> lock(accounts_mutex_);
     accounts_.erase(account_cookie);
@@ -1044,12 +1107,8 @@ AccountManager AccountManager::from_json(const nlohmann::json& j) {
 
     if (j.contains("accounts")) {
         for (const auto& account_json : j.at("accounts")) {
-            auto temp_account = UnifiedAccount::from_json(account_json);
             auto account = std::make_unique<UnifiedAccount>(
-                temp_account.get_account_cookie(),
-                temp_account.get_portfolio_cookie(),
-                temp_account.get_user_cookie(),
-                temp_account.get_cash());
+                UnifiedAccount::from_json(account_json));
             manager.add_account(std::move(account));
         }
     }

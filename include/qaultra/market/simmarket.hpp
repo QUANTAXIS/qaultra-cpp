@@ -1,8 +1,8 @@
 #pragma once
 
 #include "matchengine/orderbook.hpp"
-#include "qaultra/account/account.hpp"
-#include "qaultra/account/order.hpp"
+#include "../account/unified_account.hpp"
+#include "../account/order.hpp"
 #include <unordered_map>
 #include <string>
 #include <vector>
@@ -76,7 +76,7 @@ struct TickSim {
  */
 class QASIMMarket {
 private:
-    std::unordered_map<std::string, std::unique_ptr<account::QA_Account>> reg_account_;  // 注册账户
+    std::unordered_map<std::string, std::unique_ptr<account::UnifiedAccount>> reg_account_;  // 注册账户
     std::unordered_map<std::string, std::unique_ptr<matchengine::Orderbook<SimMarketAsset>>> order_book_;  // 订单簿
     std::unordered_map<std::string, std::unordered_map<uint64_t, account::Order>> matching_e_id_;  // 撮合引擎订单映射
     std::string time_;                              // 当前时间
@@ -109,13 +109,13 @@ public:
      * @brief 注册账户 - 匹配Rust register_account方法
      */
     void register_account(const std::string& account_cookie,
-                         std::unique_ptr<account::QA_Account> account);
+                         std::unique_ptr<account::UnifiedAccount> account);
 
     /**
      * @brief 获取账户 - 匹配Rust get_account方法
      */
-    account::QA_Account* get_account(const std::string& account_cookie);
-    const account::QA_Account* get_account(const std::string& account_cookie) const;
+    account::UnifiedAccount* get_account(const std::string& account_cookie);
+    const account::UnifiedAccount* get_account(const std::string& account_cookie) const;
 
     /**
      * @brief 订单发送 - 匹配Rust order_send方法
