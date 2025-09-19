@@ -301,6 +301,14 @@ public:
     AccountManager() = default;
     ~AccountManager() = default;
 
+    // 禁用拷贝构造和拷贝赋值
+    AccountManager(const AccountManager&) = delete;
+    AccountManager& operator=(const AccountManager&) = delete;
+
+    // 启用移动构造和移动赋值
+    AccountManager(AccountManager&&) = default;
+    AccountManager& operator=(AccountManager&&) = default;
+
     // 账户管理
     void add_account(std::unique_ptr<UnifiedAccount> account);
     void remove_account(const std::string& account_cookie);

@@ -111,10 +111,10 @@ public:
           const std::string& order_id_str);
 
     /// 从QIFI格式创建订单
-    static Order from_qifi(const protocol::Order& qifi_order);
+    static Order from_qifi(const protocol::qifi::Order& qifi_order);
 
     /// 转换为QIFI格式
-    protocol::Order to_qifi() const;
+    protocol::qifi::Order to_qifi() const;
 
     /// 订单操作方法
     void cancel();                              // 撤销订单

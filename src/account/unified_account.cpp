@@ -793,18 +793,38 @@ void UnifiedAccount::update_position_from_trade(const std::string& code, double 
             positions_.erase(pos_it);
         } else {
             // 更新仓位
-            if ((position.volume > 0 && is_buy) || (position.volume < 0 && !is_buy)) {
+            double current_vol = position.volume_long - position.volume_short;
+            if ((current_vol > 0 && is_buy) || (current_vol < 0 && !is_buy)) {
                 // 同向加仓，更新平均成本
-                double total_value = position.volume * position.price +
-                                   (is_buy ? volume : -volume) * price;
-                position.volume = new_volume;
-                position.price = total_value / new_volume;
+                double current_price = (position.volume_long > 0) ? position.position_price_long : position.position_price_short;
+                double total_value = current_vol * current_price + (is_buy ? volume : -volume) * price;
+                if (is_buy) {
+                    position.volume_long = std::max(0.0, new_volume);
+                    position.volume_short = std::max(0.0, -new_volume);
+                    if (position.volume_long > 0) position.position_price_long = total_value / position.volume_long;
+                } else {
+                    position.volume_long = std::max(0.0, new_volume);
+                    position.volume_short = std::max(0.0, -new_volume);
+                    if (position.volume_short > 0) position.position_price_short = total_value / position.volume_short;
+                }
             } else {
                 // 反向平仓
-                position.volume = new_volume;
-                if (std::abs(position.volume) > std::abs(pos_it->second.volume)) {
+                if (is_buy) {
+                    position.volume_long = std::max(0.0, new_volume);
+                    position.volume_short = std::max(0.0, -new_volume);
+                } else {
+                    position.volume_long = std::max(0.0, new_volume);
+                    position.volume_short = std::max(0.0, -new_volume);
+                }
+                double new_current_vol = position.volume_long - position.volume_short;
+                double old_current_vol = pos_it->second.volume_long - pos_it->second.volume_short;
+                if (std::abs(new_current_vol) > std::abs(old_current_vol)) {
                     // 超量平仓，变向
-                    position.price = price;
+                    if (is_buy && position.volume_long > 0) {
+                        position.position_price_long = price;
+                    } else if (!is_buy && position.volume_short > 0) {
+                        position.position_price_short = price;
+                    }
                 }
             }
         }
@@ -1034,7 +1054,7 @@ AccountManager AccountManager::from_json(const nlohmann::json& j) {
         }
     }
 
-    return std::move(manager);
+    return manager;
 }
 
 void UnifiedAccount::set_market_preset(const MarketPreset& preset) {

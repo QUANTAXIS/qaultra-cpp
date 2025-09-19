@@ -651,7 +651,7 @@ void UnifiedBacktestEngine::initialize_components() {
 
     // 初始化市场模拟器
     if (config_.enable_matching_engine) {
-        market_sim_ = std::make_unique<market::SimMarket>();
+        market_sim_ = std::make_unique<market::simmarket::QASIMMarket>();
     }
 
     // 初始化事件引擎

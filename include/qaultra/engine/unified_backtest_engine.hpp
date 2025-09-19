@@ -443,7 +443,7 @@ private:
 
     // 核心组件
     std::shared_ptr<account::UnifiedAccount> account_;
-    std::unique_ptr<market::SimMarket> market_sim_;
+    std::unique_ptr<market::simmarket::QASIMMarket> market_sim_;
     std::shared_ptr<EventEngine> event_engine_;
     std::unique_ptr<UnifiedDataManager> data_manager_;
     std::vector<std::shared_ptr<UnifiedStrategy>> strategies_;

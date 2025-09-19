@@ -100,7 +100,7 @@ public:
                               const std::string& user_cookie,
                               const std::string& account_id,
                               const std::string& portfolio_cookie,
-                              const protocol::Position& qifi_pos);
+                              const protocol::qifi::Position& qifi_pos);
 
     /// 核心计算方法 - 完全匹配Rust实现
     double volume_long() const;                 // 多头总持仓量
@@ -163,7 +163,7 @@ public:
     // 序列化方法
     nlohmann::json to_json() const;
     static Position from_json(const nlohmann::json& j);
-    protocol::Position to_qifi() const;
+    protocol::qifi::Position to_qifi() const;
 
     // 工具方法
     std::string get_market_type() const;
