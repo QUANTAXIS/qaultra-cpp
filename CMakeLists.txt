@@ -49,6 +49,9 @@ else()
         "src/protocol/mifi.cpp"
         "src/protocol/tifi.cpp"
         "src/engine/backtest_engine.cpp"
+        "src/analysis/performance_analyzer.cpp"
+        "src/connector/database_connector.cpp"
+        "src/connector/qa_connector.cpp"
     )
     set(QAULTRA_SOURCES ${BASIC_SOURCES})
 endif()
@@ -84,6 +87,12 @@ if(QAULTRA_BUILD_TESTS)
 
     add_executable(full_backtest_demo tests/test_full_backtest.cpp)
     target_link_libraries(full_backtest_demo qaultra)
+
+    add_executable(performance_analysis_test tests/test_performance_analysis.cpp)
+    target_link_libraries(performance_analysis_test qaultra)
+
+    add_executable(database_connector_test tests/test_database_connector.cpp)
+    target_link_libraries(database_connector_test qaultra)
 endif()
 
 # 示例
