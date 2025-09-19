@@ -1,0 +1,209 @@
+# Build directories
+build/
+build_*/
+bin/
+lib/
+dist/
+out/
+
+# CMake generated files
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+Makefile
+*.cmake
+!CMakeLists.txt
+!cmake/*.cmake.in
+
+# Compiled Object files
+*.slo
+*.lo
+*.o
+*.obj
+
+# Precompiled Headers
+*.gch
+*.pch
+
+# Compiled Dynamic libraries
+*.so
+*.dylib
+*.dll
+
+# Fortran module files
+*.mod
+*.smod
+
+# Compiled Static libraries
+*.lai
+*.la
+*.a
+*.lib
+
+# Executables
+*.exe
+*.out
+*.app
+
+# Debug files
+*.dSYM/
+*.su
+*.idb
+*.pdb
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Qt-es
+object_script.*.Release
+object_script.*.Debug
+*_plugin_import.cpp
+/.qmake.cache
+/.qmake.stash
+*.pro.user
+*.pro.user.*
+*.qbs.user
+*.qbs.user.*
+*.moc
+moc_*.cpp
+moc_*.h
+qrc_*.cpp
+ui_*.h
+*.qmlc
+*.jsc
+Makefile*
+*build-*
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Testing
+Testing/
+CTestTestfile.cmake
+*.gcov
+*.gcda
+*.gcno
+
+# Documentation
+docs/_build/
+docs/html/
+docs/latex/
+
+# Conan
+conandata.yml
+conanfile.txt
+conaninfo.txt
+conanbuildinfo.cmake
+conanbuildinfo.txt
+
+# vcpkg
+vcpkg_installed/
+
+# Package files
+*.tar.gz
+*.tar.bz2
+*.tar.xz
+*.zip
+
+# Temporary files
+*.tmp
+*.temp
+*.bak
+*.orig
+
+# Log files
+*.log
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Arrow/Parquet test files
+*.parquet
+*.arrow
+
+# Performance test data
+perf_data/
+benchmark_results/
+
+# Local configuration
+local_config.json
+config.local.*
+
+# Development utilities
+scripts/local_*
+tools/dev_*
+
+# Backup files
+*_backup.*
+*.backup
+
+# Generated files
+version.hpp
+build_info.hpp
+
+# Test executables
+*_test
+*_benchmark
+test_*
+minimal_test
+progressive_test
+simple_example
+
+# Coverage files
+*.coverage
+htmlcov/
+
+# Memory debugging
+valgrind-out.txt
+callgrind.out.*
+massif.out.*
+
+# Profiling files
+gmon.out
+perf.data*
+
+# Static analysis
+cppcheck.xml
+scan-build-*
+
+# Rust files (if any remain)
+Cargo.lock
+target/
+
+# Node modules (if using npm for tooling)
+node_modules/
+
+# Database files
+*.db
+*.sqlite
+*.sqlite3

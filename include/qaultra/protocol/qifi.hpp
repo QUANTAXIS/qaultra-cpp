@@ -5,6 +5,7 @@
 #include <unordered_map>
 #include <vector>
 #include <chrono>
+#include <shared_mutex>
 
 namespace qaultra::protocol::qifi {
 

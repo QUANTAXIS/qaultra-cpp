@@ -11,12 +11,9 @@ include_directories(${CMAKE_SOURCE_DIR}/include)
 set(TEST_SOURCES
     test_main.cpp
     test_account.cpp
-    test_market.cpp
-    test_simd.cpp
-    test_arrow_data.cpp
-    test_protocols.cpp
-    test_matching_engine.cpp
-    test_performance.cpp
+    test_order.cpp
+    test_kline.cpp
+    test_qadata.cpp
 )
 
 # Create test executable

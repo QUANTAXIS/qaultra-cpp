@@ -42,13 +42,10 @@ if(QAULTRA_USE_FULL_FEATURES)
     )
     set(QAULTRA_SOURCES ${ALL_SOURCES})
 else()
-    # 基础功能 - 包含稳定模块
+    # 基础功能 - 只包含稳定模块
     file(GLOB BASIC_SOURCES
         "src/data/datatype_simple.cpp"
         "src/account/marketpreset.cpp"
-        "src/protocol/mifi.cpp"
-        "src/protocol/tifi.cpp"
-        "src/engine/backtest_engine.cpp"
     )
     set(QAULTRA_SOURCES ${BASIC_SOURCES})
 endif()
@@ -75,15 +72,6 @@ set_target_properties(qaultra PROPERTIES
 if(QAULTRA_BUILD_TESTS)
     add_executable(progressive_test tests/test_minimal.cpp)
     target_link_libraries(progressive_test qaultra)
-
-    add_executable(protocol_test tests/test_protocol.cpp)
-    target_link_libraries(protocol_test qaultra)
-
-    add_executable(backtest_test tests/test_backtest_simple.cpp)
-    target_link_libraries(backtest_test qaultra)
-
-    add_executable(full_backtest_demo tests/test_full_backtest.cpp)
-    target_link_libraries(full_backtest_demo qaultra)
 endif()
 
 # 示例

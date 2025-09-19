@@ -1,0 +1,36 @@
+cmake_minimum_required(VERSION 3.16)
+
+project(qaultra-cpp-minimal VERSION 1.0.0 LANGUAGES CXX)
+
+# 基本设置
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
+# 编译标志
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O2 -Wall")
+
+# 包含目录
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/include)
+
+# 收集源文件 - 只编译已实现的模块
+file(GLOB_RECURSE ACCOUNT_SOURCES "src/account/*.cpp")
+file(GLOB_RECURSE MARKET_SOURCES "src/market/*.cpp")
+file(GLOB_RECURSE DATA_SOURCES "src/data/*.cpp")
+
+# 创建基础库
+add_library(qaultra_minimal STATIC
+    ${ACCOUNT_SOURCES}
+    ${MARKET_SOURCES}
+    ${DATA_SOURCES}
+)
+
+# 链接线程库
+find_package(Threads REQUIRED)
+target_link_libraries(qaultra_minimal Threads::Threads)
+
+# 简化测试
+add_executable(minimal_test
+    tests/test_minimal.cpp
+)
+
+target_link_libraries(minimal_test qaultra_minimal)
