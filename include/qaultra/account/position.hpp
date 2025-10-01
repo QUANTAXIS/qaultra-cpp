@@ -14,9 +14,9 @@ using Amount = double;
 using AssetId = std::string;
 
 /**
- * @brief 持仓信息类 - 完全匹配Rust QA_Postions实现
+ * @brief 持仓信息类 - 完全匹配Rust QA_Position实现
  */
-class Position {
+class QA_Position {
 public:
     // 基础信息字段 - 完全匹配Rust实现
     std::string code;                           // 代码
@@ -81,26 +81,26 @@ public:
     } preset;
 
 public:
-    Position() = default;
+    QA_Position() = default;
 
     /// 构造函数 - 匹配Rust实现
-    Position(const std::string& code,
+    QA_Position(const std::string& code,
              const std::string& account_cookie,
              const std::string& user_id,
              const std::string& portfolio_cookie);
 
     /// 新建持仓 - 匹配Rust new方法
-    static Position new_position(const std::string& code,
+    static QA_Position new_position(const std::string& code,
                                 const std::string& account_cookie,
                                 const std::string& user_id,
                                 const std::string& portfolio_cookie);
 
     /// 从QIFI格式创建 - 匹配Rust from_qifi方法
-    static Position from_qifi(const std::string& account_cookie,
+    static QA_Position from_qifi(const std::string& account_cookie,
                               const std::string& user_cookie,
                               const std::string& account_id,
                               const std::string& portfolio_cookie,
-                              const protocol::qifi::Position& qifi_pos);
+                              const protocol::qifi::QA_Position& qifi_pos);
 
     /// 核心计算方法 - 完全匹配Rust实现
     double volume_long() const;                 // 多头总持仓量
@@ -162,8 +162,8 @@ public:
 
     // 序列化方法
     nlohmann::json to_json() const;
-    static Position from_json(const nlohmann::json& j);
-    protocol::qifi::Position to_qifi() const;
+    static QA_Position from_json(const nlohmann::json& j);
+    protocol::qifi::QA_Position to_qifi() const;
 
     // 工具方法
     std::string get_market_type() const;
@@ -198,7 +198,7 @@ struct PositionStats {
     double total_volume_long = 0.0;
     double total_volume_short = 0.0;
 
-    void update(const Position& pos);
+    void update(const QA_Position& pos);
     void reset();
     nlohmann::json to_json() const;
 };

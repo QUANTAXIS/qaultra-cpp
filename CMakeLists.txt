@@ -15,6 +15,8 @@ option(QAULTRA_BUILD_EXAMPLES "Build examples" OFF)
 option(QAULTRA_BUILD_BENCHMARKS "Build benchmarks" OFF)
 option(QAULTRA_USE_ARROW "Use Apache Arrow" OFF)
 option(QAULTRA_USE_FULL_FEATURES "Use all features" OFF)
+option(QAULTRA_USE_ICEORYX "Use IceOryx for zero-copy IPC" ON)
+option(QAULTRA_USE_ICEORYX2 "Use iceoryx2 for zero-copy IPC" ON)
 
 # 包含目录
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/include)
@@ -30,6 +32,20 @@ if(NOT nlohmann_json_FOUND)
     endif()
 endif()
 
+# MongoDB 依赖 (可选)
+option(QAULTRA_USE_MONGODB "Use MongoDB connector" OFF)
+if(QAULTRA_USE_MONGODB)
+    find_package(mongocxx QUIET)
+    find_package(bsoncxx QUIET)
+    if(mongocxx_FOUND AND bsoncxx_FOUND)
+        set(MONGODB_AVAILABLE TRUE)
+        message(STATUS "MongoDB C++ driver found")
+    else()
+        message(WARNING "MongoDB C++ driver not found. Database features will be disabled.")
+        set(MONGODB_AVAILABLE FALSE)
+    endif()
+endif()
+
 # 可选依赖
 if(QAULTRA_USE_ARROW)
     find_package(Arrow QUIET)
@@ -38,18 +54,60 @@ if(QAULTRA_USE_ARROW)
     endif()
 endif()
 
+# IceOryx 依赖
+if(QAULTRA_USE_ICEORYX)
+    # 设置 IceOryx 路径
+    set(iceoryx_posh_DIR "/home/quantaxis/iceoryx/build/install/lib/cmake/iceoryx_posh")
+    set(iceoryx_hoofs_DIR "/home/quantaxis/iceoryx/build/install/lib/cmake/iceoryx_hoofs")
+    set(iceoryx_platform_DIR "/home/quantaxis/iceoryx/build/install/lib/cmake/iceoryx_platform")
+
+    # 添加 IceOryx 头文件路径
+    include_directories("/home/quantaxis/iceoryx/build/install/include")
+
+    find_package(iceoryx_posh QUIET)
+    find_package(iceoryx_hoofs QUIET)
+    find_package(iceoryx_platform QUIET)
+
+    if(iceoryx_posh_FOUND AND iceoryx_hoofs_FOUND)
+        set(ICEORYX_AVAILABLE TRUE)
+        message(STATUS "IceOryx found: ${iceoryx_posh_DIR}")
+    else()
+        message(WARNING "IceOryx not found. Zero-copy IPC features will be disabled.")
+        set(ICEORYX_AVAILABLE FALSE)
+    endif()
+endif()
+
+# iceoryx2 依赖
+if(QAULTRA_USE_ICEORYX2)
+    # 添加 iceoryx2 头文件路径
+    set(ICEORYX2_INCLUDE_DIR "/home/quantaxis/iceoryx2/iceoryx2-cxx/include")
+    set(ICEORYX2_C_INCLUDE_DIR "/home/quantaxis/iceoryx2/build/rust/native/release/iceoryx2-ffi-c-cbindgen/include")
+    set(ICEORYX2_LIB_DIR "/home/quantaxis/iceoryx2/build/iceoryx2-cxx")
+
+    include_directories(${ICEORYX2_INCLUDE_DIR})
+    include_directories(${ICEORYX2_C_INCLUDE_DIR})
+
+    # 检查库文件是否存在
+    if(EXISTS "${ICEORYX2_LIB_DIR}/libiceoryx2_cxx.a")
+        set(ICEORYX2_AVAILABLE TRUE)
+        message(STATUS "iceoryx2 found: ${ICEORYX2_LIB_DIR}/libiceoryx2_cxx.a")
+    else()
+        message(WARNING "iceoryx2 not found. iceoryx2 IPC features will be disabled.")
+        set(ICEORYX2_AVAILABLE FALSE)
+    endif()
+endif()
+
 # 收集源文件 - 使用统一版本
 set(UNIFIED_SOURCES
     # 统一数据类型系统
-    "src/data/unified_datatype.cpp"
-    "src/data/datatype_simple.cpp"
+    "src/data/datatype.cpp"
+    "src/data/kline.cpp"
 
     # 统一账户系统
-    "src/account/unified_account.cpp"
+    "src/account/qa_account.cpp"
     "src/account/marketpreset.cpp"
+    "src/account/batch_operations.cpp"
 
-    # 统一回测引擎
-    "src/engine/unified_backtest_engine.cpp"
 
     # 协议支持（只包含存在的文件）
     "src/protocol/mifi.cpp"
@@ -58,10 +116,31 @@ set(UNIFIED_SOURCES
     # 分析模块
     "src/analysis/performance_analyzer.cpp"
 
-    # 连接器（暂时禁用有问题的qa_connector）
+    # 连接器
     "src/connector/database_connector.cpp"
-    # "src/connector/qa_connector.cpp"  # 暂时禁用，存在依赖问题
 )
+
+# MongoDB 连接器 (可选)
+if(MONGODB_AVAILABLE)
+    list(APPEND UNIFIED_SOURCES
+        "src/connector/mongodb_connector.cpp"
+    )
+endif()
+
+# IceOryx IPC 模块 (v1)
+if(ICEORYX_AVAILABLE)
+    list(APPEND UNIFIED_SOURCES
+        "src/ipc/broadcast_hub_v1.cpp"
+    )
+endif()
+
+# iceoryx2 IPC 模块 (v2)
+if(ICEORYX2_AVAILABLE)
+    list(APPEND UNIFIED_SOURCES
+        "src/ipc/broadcast_hub_v2.cpp"
+        "src/ipc/cross_lang_data.cpp"
+    )
+endif()
 
 # 可选的完整功能源文件
 if(QAULTRA_USE_FULL_FEATURES)
@@ -107,6 +186,48 @@ if(ARROW_AVAILABLE)
     target_compile_definitions(qaultra PUBLIC QAULTRA_HAVE_ARROW)
 endif()
 
+# IceOryx 链接
+if(ICEORYX_AVAILABLE)
+    target_link_libraries(qaultra PUBLIC
+        iceoryx_posh::iceoryx_posh
+        iceoryx_hoofs::iceoryx_hoofs
+        iceoryx_platform::iceoryx_platform
+    )
+    target_compile_definitions(qaultra PUBLIC QAULTRA_HAVE_ICEORYX)
+endif()
+
+# MongoDB 链接
+if(MONGODB_AVAILABLE)
+    target_link_libraries(qaultra PUBLIC
+        mongo::mongocxx_shared
+        mongo::bsoncxx_shared
+    )
+    target_compile_definitions(qaultra PUBLIC QAULTRA_HAVE_MONGODB)
+endif()
+
+# iceoryx2 链接
+if(ICEORYX2_AVAILABLE)
+    set(ICEORYX2_DEPS_DIR "/home/quantaxis/iceoryx2/build/_deps/iceoryx-build")
+
+    target_link_libraries(qaultra PUBLIC
+        ${ICEORYX2_LIB_DIR}/libiceoryx2_cxx.a
+        /home/quantaxis/iceoryx2/build/rust/native/release/libiceoryx2_ffi_c.a
+        ${ICEORYX2_DEPS_DIR}/iceoryx_hoofs/libiceoryx_hoofs.so
+        ${ICEORYX2_DEPS_DIR}/iceoryx_platform/libiceoryx_platform.so
+        pthread
+        dl
+        m
+        rt
+    )
+    target_compile_definitions(qaultra PUBLIC QAULTRA_HAVE_ICEORYX2)
+
+    # 添加运行时库路径
+    set_target_properties(qaultra PROPERTIES
+        BUILD_RPATH "${ICEORYX2_DEPS_DIR}/iceoryx_hoofs:${ICEORYX2_DEPS_DIR}/iceoryx_platform"
+        INSTALL_RPATH "${ICEORYX2_DEPS_DIR}/iceoryx_hoofs:${ICEORYX2_DEPS_DIR}/iceoryx_platform"
+    )
+endif()
+
 # 设置属性
 set_target_properties(qaultra PROPERTIES
     VERSION ${PROJECT_VERSION}
@@ -128,7 +249,6 @@ if(QAULTRA_BUILD_TESTS)
             tests/test_order.cpp
             tests/test_market_preset.cpp
             tests/test_qifi_protocol.cpp
-            tests/test_unified_datatype.cpp
             tests/test_unified_backtest_engine.cpp
             tests/test_event_engine.cpp
             tests/test_trading_integration.cpp
@@ -172,8 +292,13 @@ if(QAULTRA_BUILD_TESTS)
     target_link_libraries(unified_account_test qaultra)
 
     # 统一数据类型测试
-    add_executable(unified_datatype_test tests/test_unified_datatype.cpp)
-    target_link_libraries(unified_datatype_test qaultra)
+
+    # 批量操作测试 (需要 GTest)
+    if(GTest_FOUND)
+        add_executable(batch_operations_test tests/test_batch_operations.cpp)
+        target_link_libraries(batch_operations_test qaultra GTest::gtest GTest::gtest_main)
+        message(STATUS "Batch operations tests enabled")
+    endif()
 
     # 性能分析测试
     add_executable(performance_analysis_test tests/test_performance_analysis.cpp)
@@ -182,6 +307,22 @@ if(QAULTRA_BUILD_TESTS)
     # 数据库连接器测试
     add_executable(database_connector_test tests/test_database_connector.cpp)
     target_link_libraries(database_connector_test qaultra)
+
+    # MongoDB 连接器测试 (需要 GTest)
+    if(MONGODB_AVAILABLE AND GTest_FOUND)
+        add_executable(mongodb_connector_test tests/test_mongodb_connector.cpp)
+        target_link_libraries(mongodb_connector_test qaultra GTest::gtest GTest::gtest_main)
+        message(STATUS "MongoDB connector tests enabled")
+    endif()
+
+    # IceOryx 广播测试
+    if(ICEORYX_AVAILABLE)
+        add_executable(broadcast_basic_test tests/test_broadcast_basic.cpp)
+        target_link_libraries(broadcast_basic_test qaultra)
+
+        add_executable(broadcast_massive_scale_test tests/test_broadcast_massive_scale.cpp)
+        target_link_libraries(broadcast_massive_scale_test qaultra)
+    endif()
 
     # 兼容性测试 - 保留原始测试以确保兼容性
     add_executable(backtest_legacy_test tests/test_backtest_simple.cpp)
@@ -195,6 +336,49 @@ endif()
 if(QAULTRA_BUILD_EXAMPLES)
     add_executable(simple_example simple_test.cpp)
     target_link_libraries(simple_example qaultra)
+
+    # 跨语言IPC示例 (iceoryx2)
+    if(ICEORYX2_AVAILABLE)
+        add_executable(cross_lang_publisher examples/cross_lang_publisher.cpp)
+        target_link_libraries(cross_lang_publisher qaultra)
+
+        add_executable(cross_lang_arrow_publisher examples/cross_lang_arrow_publisher.cpp)
+        target_link_libraries(cross_lang_arrow_publisher qaultra)
+
+        # 标准 Apache Arrow IPC 示例
+        find_package(Arrow QUIET)
+        if(Arrow_FOUND)
+            add_executable(arrow_ipc_publisher examples/arrow_ipc_publisher.cpp)
+            target_link_libraries(arrow_ipc_publisher qaultra arrow_shared)
+            message(STATUS "Apache Arrow IPC example enabled")
+        endif()
+    endif()
+endif()
+
+# 跨语言 qadataswap 示例 (独立于 QAULTRA_BUILD_EXAMPLES)
+find_package(Arrow QUIET)
+if(Arrow_FOUND)
+    # qadataswap C++ 发布器
+    add_executable(cross_lang_cpp_publisher examples/cross_lang_cpp_publisher.cpp)
+    target_link_libraries(cross_lang_cpp_publisher
+        ${CMAKE_SOURCE_DIR}/../libs/qadataswap/build/cpp/libqadataswap_core.so
+        arrow_shared
+    )
+    target_include_directories(cross_lang_cpp_publisher PRIVATE
+        ${CMAKE_SOURCE_DIR}/../libs/qadataswap/src/cpp/include
+    )
+
+    # qadataswap C++ 订阅器
+    add_executable(cross_lang_cpp_subscriber examples/cross_lang_cpp_subscriber.cpp)
+    target_link_libraries(cross_lang_cpp_subscriber
+        ${CMAKE_SOURCE_DIR}/../libs/qadataswap/build/cpp/libqadataswap_core.so
+        arrow_shared
+    )
+    target_include_directories(cross_lang_cpp_subscriber PRIVATE
+        ${CMAKE_SOURCE_DIR}/../libs/qadataswap/src/cpp/include
+    )
+
+    message(STATUS "Cross-language qadataswap examples enabled")
 endif()
 
 # 打印配置信息
@@ -206,5 +390,9 @@ message(STATUS "  C++ Standard: ${CMAKE_CXX_STANDARD}")
 message(STATUS "  Build Tests: ${QAULTRA_BUILD_TESTS}")
 message(STATUS "  Use Arrow: ${QAULTRA_USE_ARROW}")
 message(STATUS "  Use Full Features: ${QAULTRA_USE_FULL_FEATURES}")
+message(STATUS "  Use IceOryx: ${QAULTRA_USE_ICEORYX}")
+message(STATUS "  Use iceoryx2: ${QAULTRA_USE_ICEORYX2}")
 message(STATUS "  Arrow Available: ${ARROW_AVAILABLE}")
+message(STATUS "  IceOryx Available: ${ICEORYX_AVAILABLE}")
+message(STATUS "  iceoryx2 Available: ${ICEORYX2_AVAILABLE}")
 message(STATUS "")

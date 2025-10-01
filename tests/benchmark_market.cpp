@@ -23,7 +23,7 @@ static void BM_SimMarket_DataGeneration(benchmark::State& state) {
     const int num_ticks = state.range(0);
 
     for (auto _ : state) {
-        SimMarket market;
+        qaultra::market market;
         market.set_code("000001.SZ");
         market.set_init_price(10.0);
 

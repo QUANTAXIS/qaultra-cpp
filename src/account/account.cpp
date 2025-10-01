@@ -33,7 +33,7 @@ AccountSlice AccountSlice::from_json(const nlohmann::json& j) {
 
     if (j.contains("positions")) {
         for (const auto& [code, pos_json] : j.at("positions").items()) {
-            slice.positions[code] = Position::from_json(pos_json);
+            slice.positions[code] = QA_Position::from_json(pos_json);
         }
     }
     return slice;
@@ -163,7 +163,7 @@ Account Account::from_qifi(const protocol::QIFI& qifi) {
 
     // 转换持仓信息 - 匹配Rust实现
     for (const auto& [code, qifi_pos] : qifi.positions) {
-        account.hold_[code] = Position::from_qifi(
+        account.hold_[code] = QA_Position::from_qifi(
             qifi.account_cookie,
             qifi.investor_name,
             qifi.account_cookie,
@@ -336,33 +336,33 @@ std::unordered_map<std::string, double> Account::get_account_pos_longshort() con
     return longshort;
 }
 
-Position* Account::get_position(const std::string& code) {
+QA_Position* Account::get_position(const std::string& code) {
     auto it = hold_.find(code);
     return (it != hold_.end()) ? &it->second : nullptr;
 }
 
-const Position* Account::get_position(const std::string& code) const {
+const QA_Position* Account::get_position(const std::string& code) const {
     auto it = hold_.find(code);
     return (it != hold_.end()) ? &it->second : nullptr;
 }
 
 double Account::get_volume_long(const std::string& code) const {
-    const Position* pos = get_position(code);
+    const QA_Position* pos = get_position(code);
     return pos ? pos->volume_long() : 0.0;
 }
 
 double Account::get_volume_short(const std::string& code) const {
-    const Position* pos = get_position(code);
+    const QA_Position* pos = get_position(code);
     return pos ? pos->volume_short() : 0.0;
 }
 
 double Account::get_volume_avail(const std::string& code) const {
-    const Position* pos = get_position(code);
+    const QA_Position* pos = get_position(code);
     return pos ? pos->volume_long_avaliable() : 0.0;
 }
 
 void Account::on_price_change(const std::string& code, double new_price, const std::string& datetime) {
-    Position* pos = get_position(code);
+    QA_Position* pos = get_position(code);
     if (pos) {
         pos->on_price_change(new_price, datetime);
     }
@@ -378,7 +378,7 @@ void Account::transfer_event(const std::string& code, double amount) {
         init_position(code);
     }
 
-    Position* pos = get_position(code);
+    QA_Position* pos = get_position(code);
     if (!pos) return;
 
     event_id_++;
@@ -416,7 +416,7 @@ void Account::dividend_event(const std::string& code, double money_ratio) {
     // 分红事件 - 匹配Rust实现
     event_id_++;
 
-    Position* pos = get_position(code);
+    QA_Position* pos = get_position(code);
     if (!pos) return;
 
     double money = (pos->volume_long_his - pos->volume_short_his) * money_ratio;
@@ -444,7 +444,7 @@ std::optional<Order> Account::smart_buy(const std::string& code, double amount, 
         if (!can_sellopen) {
             return buy(code, amount, time, price);
         } else {
-            Position* pos = get_position(code);
+            QA_Position* pos = get_position(code);
             double short_pos = pos->volume_short();
 
             if (short_pos > amount) {
@@ -471,7 +471,7 @@ std::optional<Order> Account::smart_sell(const std::string& code, double amount,
         if (!can_sellopen) {
             return sell(code, amount, time, price);
         } else {
-            Position* pos = get_position(code);
+            QA_Position* pos = get_position(code);
             double long_pos = pos->volume_long();
 
             if (long_pos > amount) {
@@ -769,7 +769,7 @@ Account Account::from_json(const nlohmann::json& j) {
 
     if (j.contains("hold")) {
         for (const auto& [code, pos_json] : j.at("hold").items()) {
-            account.hold_[code] = Position::from_json(pos_json);
+            account.hold_[code] = QA_Position::from_json(pos_json);
         }
     }
 
@@ -778,7 +778,7 @@ Account Account::from_json(const nlohmann::json& j) {
 
 // 私有辅助方法实现
 void Account::init_position(const std::string& code) {
-    hold_[code] = Position::new_position(code, account_cookie_, user_cookie_, portfolio_cookie_);
+    hold_[code] = QA_Position::new_position(code, account_cookie_, user_cookie_, portfolio_cookie_);
 }
 
 std::optional<Order> Account::order_check(const std::string& code,
@@ -798,7 +798,7 @@ std::optional<Order> Account::order_check(const std::string& code,
         init_position(code);
     }
 
-    Position* pos = get_position(code);
+    QA_Position* pos = get_position(code);
     if (!pos) return std::nullopt;
 
     // 688开头股票检查（科创板）

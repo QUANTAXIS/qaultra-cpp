@@ -85,7 +85,7 @@ struct IMarketData {
  * @brief 统一的K线数据结构
  * 集成simple和full版本的最佳特性
  */
-struct UnifiedKline : public IMarketData {
+struct Kline : public IMarketData {
     // 基本信息
     std::string order_book_id;                      // 证券代码
     time_point datetime;                            // 日期时间
@@ -114,9 +114,9 @@ struct UnifiedKline : public IMarketData {
     /**
      * @brief 构造函数
      */
-    UnifiedKline() : datetime(std::chrono::system_clock::now()) {}
+    Kline() : datetime(std::chrono::system_clock::now()) {}
 
-    UnifiedKline(const std::string& code,
+    Kline(const std::string& code,
                  const time_point& dt,
                  double o, double h, double l, double c,
                  double vol, double turnover = 0.0)
@@ -177,19 +177,19 @@ struct UnifiedKline : public IMarketData {
     /**
      * @brief 比较运算符
      */
-    bool operator==(const UnifiedKline& other) const;
-    bool operator<(const UnifiedKline& other) const;
+    bool operator==(const Kline& other) const;
+    bool operator<(const Kline& other) const;
 
     /**
      * @brief JSON序列化
      */
     nlohmann::json to_json() const override;
-    static UnifiedKline from_json(const nlohmann::json& j);
+    static Kline from_json(const nlohmann::json& j);
 
     /**
      * @brief 从简单Kline转换
      */
-    static UnifiedKline from_simple_kline(const std::string& code,
+    static Kline from_simple_kline(const std::string& code,
                                          const std::string& datetime_str,
                                          double o, double h, double l, double c,
                                          double vol, double turnover = 0.0);
@@ -241,8 +241,8 @@ struct StockCnDay : public IMarketData {
     static StockCnDay from_json(const nlohmann::json& j);
 
     // 转换为统一格式
-    UnifiedKline to_unified_kline() const;
-    static StockCnDay from_unified_kline(const UnifiedKline& kline);
+    Kline to_unified_kline() const;
+    static StockCnDay from_unified_kline(const Kline& kline);
 };
 
 /**
@@ -279,8 +279,8 @@ struct StockCn1Min : public IMarketData {
     static StockCn1Min from_json(const nlohmann::json& j);
 
     // 转换为统一格式
-    UnifiedKline to_unified_kline() const;
-    static StockCn1Min from_unified_kline(const UnifiedKline& kline);
+    Kline to_unified_kline() const;
+    static StockCn1Min from_unified_kline(const Kline& kline);
 };
 
 /**
@@ -320,14 +320,14 @@ struct FutureCn1Min : public IMarketData {
     static FutureCn1Min from_json(const nlohmann::json& j);
 
     // 转换为统一格式
-    UnifiedKline to_unified_kline() const;
-    static FutureCn1Min from_unified_kline(const UnifiedKline& kline, float oi = 0.0f);
+    Kline to_unified_kline() const;
+    static FutureCn1Min from_unified_kline(const Kline& kline, float oi = 0.0f);
 };
 
 /**
  * @brief 多类型市场数据容器
  */
-using MarketDataVariant = std::variant<UnifiedKline, StockCnDay, StockCn1Min, FutureCn1Min>;
+using MarketDataVariant = std::variant<Kline, StockCnDay, StockCn1Min, FutureCn1Min>;
 
 /**
  * @brief 市场数据容器类
@@ -342,7 +342,7 @@ public:
     explicit MarketDataContainer(const std::string& code) : code_(code) {}
 
     // 数据添加
-    void add_data(const UnifiedKline& data);
+    void add_data(const Kline& data);
     void add_data(const StockCnDay& data);
     void add_data(const StockCn1Min& data);
     void add_data(const FutureCn1Min& data);
@@ -371,7 +371,7 @@ public:
     std::optional<MarketDataVariant> find_by_datetime(const time_point& dt) const;
 
     // 数据转换
-    std::vector<UnifiedKline> to_unified_klines() const;
+    std::vector<Kline> to_unified_klines() const;
 
     // 统计信息
     struct Statistics {
@@ -449,7 +449,7 @@ namespace utils {
     /**
      * @brief 数据转换辅助
      */
-    UnifiedKline variant_to_unified_kline(const MarketDataVariant& data);
+    Kline variant_to_unified_kline(const MarketDataVariant& data);
     IMarketData& get_market_data_interface(MarketDataVariant& data);
     const IMarketData& get_market_data_interface(const MarketDataVariant& data);
 }

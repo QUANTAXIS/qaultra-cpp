@@ -3,7 +3,7 @@
 #include "position.hpp"
 #include "order.hpp"
 #include "../protocol/qifi.hpp"
-#include "../data/unified_datatype.hpp"
+#include "../data/datatype.hpp"
 #include <memory>
 #include <string>
 #include <unordered_map>
@@ -62,7 +62,7 @@ struct AccountSlice {
     std::string datetime;
     double cash = 0.0;
     std::string account_cookie;
-    std::unordered_map<std::string, Position> positions;
+    std::unordered_map<std::string, QA_Position> positions;
     std::vector<Order> pending_orders;
 
     nlohmann::json to_json() const;
@@ -72,12 +72,12 @@ struct AccountSlice {
 /**
  * @brief 统一账户类 - 集成simple和full版本最佳功能
  */
-class UnifiedAccount {
+class QA_Account {
 public:
     /**
      * @brief 构造函数
      */
-    UnifiedAccount(const std::string& account_cookie,
+    QA_Account(const std::string& account_cookie,
                    const std::string& portfolio_cookie = "",
                    const std::string& user_cookie = "",
                    double init_cash = 1000000.0,
@@ -86,15 +86,15 @@ public:
     /**
      * @brief 析构函数
      */
-    ~UnifiedAccount() = default;
+    ~QA_Account() = default;
 
     // 禁用拷贝构造和拷贝赋值
-    UnifiedAccount(const UnifiedAccount&) = delete;
-    UnifiedAccount& operator=(const UnifiedAccount&) = delete;
+    QA_Account(const QA_Account&) = delete;
+    QA_Account& operator=(const QA_Account&) = delete;
 
     // 启用移动构造和移动赋值
-    UnifiedAccount(UnifiedAccount&& other) noexcept;
-    UnifiedAccount& operator=(UnifiedAccount&& other) noexcept;
+    QA_Account(QA_Account&& other) noexcept;
+    QA_Account& operator=(QA_Account&& other) noexcept;
 
     // 账户基本信息
     const std::string& get_account_cookie() const { return account_cookie_; }
@@ -130,8 +130,8 @@ public:
     std::optional<Order> find_order(const std::string& order_id) const;
 
     // 持仓管理
-    std::unordered_map<std::string, Position> get_positions() const;
-    std::optional<Position> get_position(const std::string& code) const;
+    std::unordered_map<std::string, QA_Position> get_positions() const;
+    std::optional<QA_Position> get_position(const std::string& code) const;
     bool has_position(const std::string& code) const;
 
     // 成交管理
@@ -171,7 +171,7 @@ public:
 
     // 序列化
     nlohmann::json to_json() const;
-    static UnifiedAccount from_json(const nlohmann::json& j);
+    static QA_Account from_json(const nlohmann::json& j);
 
     // 统计信息
     struct Statistics {
@@ -197,7 +197,7 @@ public:
     // 事件回调
     using OrderCallback = std::function<void(const Order&)>;
     using TradeCallback = std::function<void(const std::string&, double, double)>;
-    using PositionCallback = std::function<void(const std::string&, const Position&)>;
+    using PositionCallback = std::function<void(const std::string&, const QA_Position&)>;
 
     void set_order_callback(OrderCallback callback) { order_callback_ = callback; }
     void set_trade_callback(TradeCallback callback) { trade_callback_ = callback; }
@@ -218,7 +218,7 @@ private:
     std::atomic<double> float_pnl_;
 
     // 交易数据
-    std::unordered_map<std::string, Position> positions_;
+    std::unordered_map<std::string, QA_Position> positions_;
     std::unordered_map<std::string, Order> orders_;
     std::vector<std::string> trade_history_;
     std::vector<AccountSlice> history_slices_;
@@ -259,7 +259,7 @@ private:
 
     void trigger_order_callback(const Order& order);
     void trigger_trade_callback(const std::string& trade_id, double price, double volume);
-    void trigger_position_callback(const std::string& code, const Position& position);
+    void trigger_position_callback(const std::string& code, const QA_Position& position);
 
     void update_statistics(const Order& order);
 };
@@ -275,29 +275,29 @@ public:
         Unified     // 统一版本
     };
 
-    static std::unique_ptr<UnifiedAccount> create_account(
+    static std::unique_ptr<QA_Account> create_account(
         AccountType type,
         const std::string& account_cookie,
         double init_cash = 1000000.0);
 
-    static std::unique_ptr<UnifiedAccount> create_stock_account(
+    static std::unique_ptr<QA_Account> create_stock_account(
         const std::string& account_cookie,
         double init_cash = 1000000.0);
 
-    static std::unique_ptr<UnifiedAccount> create_future_account(
+    static std::unique_ptr<QA_Account> create_future_account(
         const std::string& account_cookie,
         double init_cash = 1000000.0);
 
-    static std::unique_ptr<UnifiedAccount> create_forex_account(
+    static std::unique_ptr<QA_Account> create_forex_account(
         const std::string& account_cookie,
         double init_cash = 1000000.0);
 
     // 从配置创建
-    static std::unique_ptr<UnifiedAccount> create_from_config(
+    static std::unique_ptr<QA_Account> create_from_config(
         const nlohmann::json& config);
 
     // 从QIFI创建
-    static std::unique_ptr<UnifiedAccount> create_from_qifi(
+    static std::unique_ptr<QA_Account> create_from_qifi(
         const protocol::qifi::QIFI& qifi_data);
 };
 
@@ -318,10 +318,10 @@ public:
     AccountManager& operator=(AccountManager&& other) noexcept;
 
     // 账户管理
-    void add_account(std::unique_ptr<UnifiedAccount> account);
+    void add_account(std::unique_ptr<QA_Account> account);
     void remove_account(const std::string& account_cookie);
-    UnifiedAccount* get_account(const std::string& account_cookie);
-    const UnifiedAccount* get_account(const std::string& account_cookie) const;
+    QA_Account* get_account(const std::string& account_cookie);
+    const QA_Account* get_account(const std::string& account_cookie) const;
 
     std::vector<std::string> get_account_list() const;
     size_t get_account_count() const;
@@ -346,7 +346,7 @@ public:
     static AccountManager from_json(const nlohmann::json& j);
 
 private:
-    std::unordered_map<std::string, std::unique_ptr<UnifiedAccount>> accounts_;
+    std::unordered_map<std::string, std::unique_ptr<QA_Account>> accounts_;
     mutable std::mutex accounts_mutex_;
 };
 

@@ -13,7 +13,7 @@
 namespace qaultra {
 namespace account {
     class QA_Account;
-    class Position;
+    class QA_Position;
 }
 namespace market {
     class MatchingEngine;
@@ -79,7 +79,7 @@ struct StrategyContext {
     // 接口方法
     double get_price(const std::string& symbol) const;
     std::vector<double> get_history(const std::string& symbol, int window, const std::string& field = "close") const;
-    std::shared_ptr<account::Position> get_position(const std::string& symbol) const;
+    std::shared_ptr<account::QA_Position> get_position(const std::string& symbol) const;
     double get_cash() const;
     double get_portfolio_value() const;
     void log(const std::string& message) const;

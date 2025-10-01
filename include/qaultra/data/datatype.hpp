@@ -8,10 +8,38 @@
 namespace qaultra::data {
 
 /**
+ * @brief C++17兼容的日期结构 - 匹配Rust chrono::NaiveDate
+ */
+struct Date {
+    int year;
+    int month;  // 1-12
+    int day;    // 1-31
+
+    Date() : year(1970), month(1), day(1) {}
+    Date(int y, int m, int d) : year(y), month(m), day(d) {}
+
+    bool operator==(const Date& other) const {
+        return year == other.year && month == other.month && day == other.day;
+    }
+
+    bool operator<(const Date& other) const {
+        if (year != other.year) return year < other.year;
+        if (month != other.month) return month < other.month;
+        return day < other.day;
+    }
+
+    std::string to_string() const {
+        char buf[11];
+        snprintf(buf, sizeof(buf), "%04d-%02d-%02d", year, month, day);
+        return std::string(buf);
+    }
+};
+
+/**
  * @brief 中国股票日线数据结构 - 完全匹配Rust StockCnDay
  */
 struct StockCnDay {
-    std::chrono::year_month_day date;       // 日期
+    Date date;                              // 日期 (匹配 Rust chrono::NaiveDate)
     std::string order_book_id;              // 证券代码
     float num_trades;                       // 成交笔数
     float limit_up;                         // 涨停价
@@ -27,7 +55,7 @@ struct StockCnDay {
      * @brief 构造函数
      */
     StockCnDay() = default;
-    StockCnDay(const std::chrono::year_month_day& date,
+    StockCnDay(const Date& date,
                const std::string& order_book_id,
                float num_trades, float limit_up, float limit_down,
                float open, float high, float low, float close,
@@ -81,7 +109,7 @@ struct StockCn1Min {
  */
 struct FutureCn1Min {
     std::chrono::system_clock::time_point datetime;  // 日期时间
-    std::chrono::year_month_day trading_date;        // 交易日期
+    Date trading_date;                               // 交易日期 (匹配 Rust chrono::NaiveDate)
     std::string order_book_id;                       // 合约代码
     float open_interest;                             // 持仓量
     float open;                                      // 开盘价
@@ -96,7 +124,7 @@ struct FutureCn1Min {
      */
     FutureCn1Min() = default;
     FutureCn1Min(const std::chrono::system_clock::time_point& datetime,
-                 const std::chrono::year_month_day& trading_date,
+                 const Date& trading_date,
                  const std::string& order_book_id,
                  float open_interest, float open, float high, float low,
                  float close, float volume, float total_turnover)

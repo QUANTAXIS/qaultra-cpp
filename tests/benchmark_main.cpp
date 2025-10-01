@@ -6,7 +6,7 @@
  */
 
 #include <benchmark/benchmark.h>
-#include "qaultra/account/unified_account.hpp"
+#include "qaultra/account/qa_account.hpp"
 #include "qaultra/account/market_preset.hpp"
 #include "qaultra/data/unified_datatype.hpp"
 #include <random>
@@ -16,19 +16,19 @@ using namespace qaultra;
 
 // ===== 统一账户性能基准测试 =====
 
-static void BM_UnifiedAccountCreation(benchmark::State& state) {
+static void BM_QA_AccountCreation(benchmark::State& state) {
     for (auto _ : state) {
-        auto account = std::make_unique<account::UnifiedAccount>(
+        auto account = std::make_unique<account::QA_Account>(
             "benchmark_account", "benchmark_portfolio", "benchmark_user",
             1000000.0, false
         );
         benchmark::DoNotOptimize(account);
     }
 }
-BENCHMARK(BM_UnifiedAccountCreation);
+BENCHMARK(BM_QA_AccountCreation);
 
 static void BM_UnifiedBuyOrders(benchmark::State& state) {
-    auto account = std::make_unique<account::UnifiedAccount>(
+    auto account = std::make_unique<account::QA_Account>(
         "benchmark_account", "benchmark_portfolio", "benchmark_user",
         10000000.0, false
     );
@@ -44,7 +44,7 @@ static void BM_UnifiedBuyOrders(benchmark::State& state) {
 BENCHMARK(BM_UnifiedBuyOrders);
 
 static void BM_UnifiedSellOrders(benchmark::State& state) {
-    auto account = std::make_unique<account::UnifiedAccount>(
+    auto account = std::make_unique<account::QA_Account>(
         "benchmark_account", "benchmark_portfolio", "benchmark_user",
         10000000.0, false
     );
@@ -66,7 +66,7 @@ static void BM_UnifiedSellOrders(benchmark::State& state) {
 BENCHMARK(BM_UnifiedSellOrders);
 
 static void BM_UnifiedTradeExecution(benchmark::State& state) {
-    auto account = std::make_unique<account::UnifiedAccount>(
+    auto account = std::make_unique<account::QA_Account>(
         "benchmark_account", "benchmark_portfolio", "benchmark_user",
         10000000.0, false
     );
@@ -91,7 +91,7 @@ BENCHMARK(BM_UnifiedTradeExecution);
 // ===== 期货交易性能测试 =====
 
 static void BM_FutureBuyOpen(benchmark::State& state) {
-    auto account = std::make_unique<account::UnifiedAccount>(
+    auto account = std::make_unique<account::QA_Account>(
         "benchmark_account", "benchmark_portfolio", "benchmark_user",
         10000000.0, false
     );
@@ -107,7 +107,7 @@ static void BM_FutureBuyOpen(benchmark::State& state) {
 BENCHMARK(BM_FutureBuyOpen);
 
 static void BM_FutureSellClose(benchmark::State& state) {
-    auto account = std::make_unique<account::UnifiedAccount>(
+    auto account = std::make_unique<account::QA_Account>(
         "benchmark_account", "benchmark_portfolio", "benchmark_user",
         10000000.0, false
     );
@@ -131,7 +131,7 @@ BENCHMARK(BM_FutureSellClose);
 // ===== 账户状态计算性能测试 =====
 
 static void BM_AccountValueCalculation(benchmark::State& state) {
-    auto account = std::make_unique<account::UnifiedAccount>(
+    auto account = std::make_unique<account::QA_Account>(
         "benchmark_account", "benchmark_portfolio", "benchmark_user",
         10000000.0, false
     );
@@ -159,7 +159,7 @@ BENCHMARK(BM_AccountValueCalculation);
 // ===== QIFI协议转换性能测试 =====
 
 static void BM_QIFIConversion(benchmark::State& state) {
-    auto account = std::make_unique<account::UnifiedAccount>(
+    auto account = std::make_unique<account::QA_Account>(
         "benchmark_account", "benchmark_portfolio", "benchmark_user",
         1000000.0, false
     );
@@ -180,7 +180,7 @@ static void BM_QIFIConversion(benchmark::State& state) {
 BENCHMARK(BM_QIFIConversion);
 
 static void BM_JSONSerialization(benchmark::State& state) {
-    auto account = std::make_unique<account::UnifiedAccount>(
+    auto account = std::make_unique<account::QA_Account>(
         "benchmark_account", "benchmark_portfolio", "benchmark_user",
         1000000.0, false
     );
@@ -204,7 +204,7 @@ BENCHMARK(BM_JSONSerialization);
 
 static void BM_MarketPresetApplication(benchmark::State& state) {
     for (auto _ : state) {
-        auto account = std::make_unique<account::UnifiedAccount>(
+        auto account = std::make_unique<account::QA_Account>(
             "benchmark_account", "benchmark_portfolio", "benchmark_user",
             1000000.0, false
         );
@@ -225,7 +225,7 @@ static void BM_BatchOrderSubmission(benchmark::State& state) {
     const int batch_size = state.range(0);
 
     for (auto _ : state) {
-        auto account = std::make_unique<account::UnifiedAccount>(
+        auto account = std::make_unique<account::QA_Account>(
             "batch_account", "batch_portfolio", "batch_user",
             100000000.0, false
         );
@@ -315,7 +315,7 @@ static void BM_MemoryFootprint(benchmark::State& state) {
     const int num_positions = state.range(0);
 
     for (auto _ : state) {
-        auto account = std::make_unique<account::UnifiedAccount>(
+        auto account = std::make_unique<account::QA_Account>(
             "mem_account", "mem_portfolio", "mem_user", 100000000.0, false
         );
         account->set_market_preset(account::MarketPreset::get_stock_preset());

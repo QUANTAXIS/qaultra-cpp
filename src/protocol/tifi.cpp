@@ -156,8 +156,8 @@ Trade Trade::from_json(const nlohmann::json& j) {
     return trade;
 }
 
-// Position 实现
-nlohmann::json Position::to_json() const {
+// QA_Position 实现
+nlohmann::json QA_Position::to_json() const {
     nlohmann::json j;
     j["account_id"] = account_id;
     j["user_id"] = user_id;
@@ -185,8 +185,8 @@ nlohmann::json Position::to_json() const {
     return j;
 }
 
-Position Position::from_json(const nlohmann::json& j) {
-    Position pos;
+QA_Position QA_Position::from_json(const nlohmann::json& j) {
+    QA_Position pos;
     if (j.contains("account_id")) j.at("account_id").get_to(pos.account_id);
     if (j.contains("user_id")) j.at("user_id").get_to(pos.user_id);
     if (j.contains("instrument_id")) j.at("instrument_id").get_to(pos.instrument_id);

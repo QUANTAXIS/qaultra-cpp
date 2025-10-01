@@ -55,8 +55,8 @@ struct Order {
     static Order from_json(const nlohmann::json& j);
 };
 
-/// Position information
-struct Position {
+/// QA_Position information
+struct QA_Position {
     std::string user_id;
     std::string exchange_id;
     std::string instrument_id;
@@ -83,7 +83,7 @@ struct Position {
     std::string last_updatetime;
 
     nlohmann::json to_json() const;
-    static Position from_json(const nlohmann::json& j);
+    static QA_Position from_json(const nlohmann::json& j);
 };
 
 /// Frozen funds information
@@ -109,7 +109,7 @@ struct Account {
     double commission = 0.0;         // Commission
     double premium = 0.0;            // Premium
     double static_balance = 0.0;     // Static balance
-    double position_profit = 0.0;    // Position profit
+    double position_profit = 0.0;    // QA_Position profit
     double float_profit = 0.0;       // Float profit
     double balance = 0.0;            // Current balance
     double margin = 0.0;             // Required margin
@@ -167,7 +167,7 @@ struct QIFI {
 
     // Core data
     Account accounts;
-    std::unordered_map<std::string, Position> positions;
+    std::unordered_map<std::string, QA_Position> positions;
     std::unordered_map<std::string, Order> orders;
     std::unordered_map<std::string, Trade> trades;
     std::unordered_map<std::string, Frozen> frozen;
@@ -190,7 +190,7 @@ struct QIFI {
          const std::string& broker_name);
 
     /// Add position
-    void add_position(const std::string& instrument_id, const Position& position);
+    void add_position(const std::string& instrument_id, const QA_Position& position);
 
     /// Add order
     void add_order(const std::string& order_id, const Order& order);
@@ -303,7 +303,7 @@ class QIFIEventHandler {
 public:
     virtual ~QIFIEventHandler() = default;
 
-    virtual void on_position_updated(const std::string& instrument_id, const Position& position) {}
+    virtual void on_position_updated(const std::string& instrument_id, const QA_Position& position) {}
     virtual void on_order_updated(const std::string& order_id, const Order& order) {}
     virtual void on_trade_created(const std::string& trade_id, const Trade& trade) {}
     virtual void on_account_updated(const Account& account) {}
@@ -328,7 +328,7 @@ public:
     void remove_handler(std::shared_ptr<QIFIEventHandler> handler);
 
     /// Update operations (thread-safe)
-    void update_position(const std::string& instrument_id, const Position& position);
+    void update_position(const std::string& instrument_id, const QA_Position& position);
     void update_order(const std::string& order_id, const Order& order);
     void add_trade(const std::string& trade_id, const Trade& trade);
     void update_account(const Account& account);
@@ -343,7 +343,7 @@ public:
     bool load_from_file(const std::string& filename);
 
 private:
-    void notify_handlers_position(const std::string& instrument_id, const Position& position);
+    void notify_handlers_position(const std::string& instrument_id, const QA_Position& position);
     void notify_handlers_order(const std::string& order_id, const Order& order);
     void notify_handlers_trade(const std::string& trade_id, const Trade& trade);
     void notify_handlers_account(const Account& account);

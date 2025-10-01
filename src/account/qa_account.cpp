@@ -1,4 +1,4 @@
-#include "qaultra/account/unified_account.hpp"
+#include "qaultra/account/qa_account.hpp"
 #include <sstream>
 #include <iomanip>
 #include <chrono>
@@ -160,7 +160,7 @@ AccountSlice AccountSlice::from_json(const nlohmann::json& j) {
 
     if (j.contains("positions")) {
         for (const auto& [code, pos_json] : j.at("positions").items()) {
-            slice.positions[code] = Position::from_json(pos_json);
+            slice.positions[code] = QA_Position::from_json(pos_json);
         }
     }
 
@@ -174,10 +174,10 @@ AccountSlice AccountSlice::from_json(const nlohmann::json& j) {
 }
 
 // =======================
-// UnifiedAccount 实现
+// QA_Account 实现
 // =======================
 
-UnifiedAccount::UnifiedAccount(const std::string& account_cookie,
+QA_Account::QA_Account(const std::string& account_cookie,
                                const std::string& portfolio_cookie,
                                const std::string& user_cookie,
                                double init_cash,
@@ -198,7 +198,7 @@ UnifiedAccount::UnifiedAccount(const std::string& account_cookie,
 }
 
 // Move constructor
-UnifiedAccount::UnifiedAccount(UnifiedAccount&& other) noexcept
+QA_Account::QA_Account(QA_Account&& other) noexcept
     : account_cookie_(std::move(other.account_cookie_))
     , portfolio_cookie_(std::move(other.portfolio_cookie_))
     , user_cookie_(std::move(other.user_cookie_))
@@ -225,7 +225,7 @@ UnifiedAccount::UnifiedAccount(UnifiedAccount&& other) noexcept
 }
 
 // Move assignment operator
-UnifiedAccount& UnifiedAccount::operator=(UnifiedAccount&& other) noexcept {
+QA_Account& QA_Account::operator=(QA_Account&& other) noexcept {
     if (this != &other) {
         account_cookie_ = std::move(other.account_cookie_);
         portfolio_cookie_ = std::move(other.portfolio_cookie_);
@@ -253,19 +253,19 @@ UnifiedAccount& UnifiedAccount::operator=(UnifiedAccount&& other) noexcept {
     return *this;
 }
 
-double UnifiedAccount::get_cash() const {
+double QA_Account::get_cash() const {
     return cash_.load();
 }
 
-double UnifiedAccount::get_frozen_cash() const {
+double QA_Account::get_frozen_cash() const {
     return frozen_cash_.load();
 }
 
-double UnifiedAccount::get_available_cash() const {
+double QA_Account::get_available_cash() const {
     return get_cash() - get_frozen_cash();
 }
 
-double UnifiedAccount::get_market_value() const {
+double QA_Account::get_market_value() const {
     std::lock_guard<std::mutex> lock(positions_mutex_);
     double market_value = 0.0;
 
@@ -280,15 +280,15 @@ double UnifiedAccount::get_market_value() const {
     return market_value;
 }
 
-double UnifiedAccount::get_total_value() const {
+double QA_Account::get_total_value() const {
     return get_cash() + get_market_value();
 }
 
-double UnifiedAccount::get_pnl() const {
+double QA_Account::get_pnl() const {
     return get_total_value() - init_cash_;
 }
 
-double UnifiedAccount::get_float_pnl() const {
+double QA_Account::get_float_pnl() const {
     std::lock_guard<std::mutex> lock(positions_mutex_);
     double pnl = 0.0;
 
@@ -306,7 +306,7 @@ double UnifiedAccount::get_float_pnl() const {
     return pnl;
 }
 
-std::string UnifiedAccount::buy(const std::string& code, double volume, double price) {
+std::string QA_Account::buy(const std::string& code, double volume, double price) {
     if (!validate_order_params(code, volume, price)) {
         return "";
     }
@@ -348,7 +348,7 @@ std::string UnifiedAccount::buy(const std::string& code, double volume, double p
     return order.order_id;
 }
 
-std::string UnifiedAccount::sell(const std::string& code, double volume, double price) {
+std::string QA_Account::sell(const std::string& code, double volume, double price) {
     if (!validate_order_params(code, volume, price)) {
         return "";
     }
@@ -385,7 +385,7 @@ std::string UnifiedAccount::sell(const std::string& code, double volume, double 
 }
 
 // 期货专用操作
-std::string UnifiedAccount::buy_open(const std::string& code, double volume, double price) {
+std::string QA_Account::buy_open(const std::string& code, double volume, double price) {
     if (market_preset_.is_stock) {
         return buy(code, volume, price);  // 股票情况下等同于买入
     }
@@ -393,7 +393,7 @@ std::string UnifiedAccount::buy_open(const std::string& code, double volume, dou
     return buy(code, volume, price);
 }
 
-std::string UnifiedAccount::sell_open(const std::string& code, double volume, double price) {
+std::string QA_Account::sell_open(const std::string& code, double volume, double price) {
     if (market_preset_.is_stock || !market_preset_.allow_sellopen) {
         return "";  // 股票不允许卖开
     }
@@ -401,7 +401,7 @@ std::string UnifiedAccount::sell_open(const std::string& code, double volume, do
     return sell(code, volume, price);
 }
 
-std::string UnifiedAccount::buy_close(const std::string& code, double volume, double price) {
+std::string QA_Account::buy_close(const std::string& code, double volume, double price) {
     if (market_preset_.is_stock) {
         return "";  // 股票没有买平概念
     }
@@ -409,11 +409,11 @@ std::string UnifiedAccount::buy_close(const std::string& code, double volume, do
     return buy(code, volume, price);
 }
 
-std::string UnifiedAccount::sell_close(const std::string& code, double volume, double price) {
+std::string QA_Account::sell_close(const std::string& code, double volume, double price) {
     return sell(code, volume, price);  // 平多头仓位
 }
 
-std::string UnifiedAccount::buy_closetoday(const std::string& code, double volume, double price) {
+std::string QA_Account::buy_closetoday(const std::string& code, double volume, double price) {
     if (market_preset_.is_stock) {
         return "";
     }
@@ -421,7 +421,7 @@ std::string UnifiedAccount::buy_closetoday(const std::string& code, double volum
     return buy_close(code, volume, price);
 }
 
-std::string UnifiedAccount::sell_closetoday(const std::string& code, double volume, double price) {
+std::string QA_Account::sell_closetoday(const std::string& code, double volume, double price) {
     if (market_preset_.is_stock) {
         return "";
     }
@@ -429,7 +429,7 @@ std::string UnifiedAccount::sell_closetoday(const std::string& code, double volu
     return sell_close(code, volume, price);
 }
 
-bool UnifiedAccount::cancel_order(const std::string& order_id) {
+bool QA_Account::cancel_order(const std::string& order_id) {
     std::lock_guard<std::mutex> lock(orders_mutex_);
     auto order_it = orders_.find(order_id);
     if (order_it == orders_.end() || order_it->second.status != "PENDING") {
@@ -446,7 +446,7 @@ bool UnifiedAccount::cancel_order(const std::string& order_id) {
     return true;
 }
 
-bool UnifiedAccount::cancel_all_orders() {
+bool QA_Account::cancel_all_orders() {
     std::lock_guard<std::mutex> lock(orders_mutex_);
     bool success = true;
 
@@ -461,7 +461,7 @@ bool UnifiedAccount::cancel_all_orders() {
     return success;
 }
 
-std::vector<Order> UnifiedAccount::get_pending_orders() const {
+std::vector<Order> QA_Account::get_pending_orders() const {
     std::lock_guard<std::mutex> lock(orders_mutex_);
     std::vector<Order> pending_orders;
 
@@ -474,7 +474,7 @@ std::vector<Order> UnifiedAccount::get_pending_orders() const {
     return pending_orders;
 }
 
-std::vector<Order> UnifiedAccount::get_filled_orders() const {
+std::vector<Order> QA_Account::get_filled_orders() const {
     std::lock_guard<std::mutex> lock(orders_mutex_);
     std::vector<Order> filled_orders;
 
@@ -487,7 +487,7 @@ std::vector<Order> UnifiedAccount::get_filled_orders() const {
     return filled_orders;
 }
 
-std::optional<Order> UnifiedAccount::find_order(const std::string& order_id) const {
+std::optional<Order> QA_Account::find_order(const std::string& order_id) const {
     std::lock_guard<std::mutex> lock(orders_mutex_);
     auto it = orders_.find(order_id);
     if (it != orders_.end()) {
@@ -496,12 +496,12 @@ std::optional<Order> UnifiedAccount::find_order(const std::string& order_id) con
     return std::nullopt;
 }
 
-std::unordered_map<std::string, Position> UnifiedAccount::get_positions() const {
+std::unordered_map<std::string, QA_Position> QA_Account::get_positions() const {
     std::lock_guard<std::mutex> lock(positions_mutex_);
     return positions_;
 }
 
-std::optional<Position> UnifiedAccount::get_position(const std::string& code) const {
+std::optional<QA_Position> QA_Account::get_position(const std::string& code) const {
     std::lock_guard<std::mutex> lock(positions_mutex_);
     auto it = positions_.find(code);
     if (it != positions_.end()) {
@@ -510,12 +510,12 @@ std::optional<Position> UnifiedAccount::get_position(const std::string& code) co
     return std::nullopt;
 }
 
-bool UnifiedAccount::has_position(const std::string& code) const {
+bool QA_Account::has_position(const std::string& code) const {
     std::lock_guard<std::mutex> lock(positions_mutex_);
     return positions_.find(code) != positions_.end();
 }
 
-void UnifiedAccount::add_trade(const std::string& order_id, double price, double volume,
+void QA_Account::add_trade(const std::string& order_id, double price, double volume,
                                const std::string& datetime) {
     // 查找对应订单
     Order* order = nullptr;
@@ -575,19 +575,19 @@ void UnifiedAccount::add_trade(const std::string& order_id, double price, double
     }
 }
 
-void UnifiedAccount::update_market_data(const std::string& code, double price) {
+void QA_Account::update_market_data(const std::string& code, double price) {
     market_prices_[code] = price;
     calculate_pnl();  // 重新计算浮动盈亏
 }
 
-void UnifiedAccount::update_market_data_batch(const std::unordered_map<std::string, double>& prices) {
+void QA_Account::update_market_data_batch(const std::unordered_map<std::string, double>& prices) {
     for (const auto& [code, price] : prices) {
         market_prices_[code] = price;
     }
     calculate_pnl();
 }
 
-void UnifiedAccount::daily_settle() {
+void QA_Account::daily_settle() {
     // 日终结算逻辑
     calculate_pnl();
 
@@ -613,12 +613,12 @@ void UnifiedAccount::daily_settle() {
     }
 }
 
-void UnifiedAccount::calculate_pnl() {
+void QA_Account::calculate_pnl() {
     get_float_pnl();  // 更新浮动盈亏
     total_value_.store(get_total_value());  // 更新总资产
 }
 
-bool UnifiedAccount::check_risk_before_order(const Order& order) const {
+bool QA_Account::check_risk_before_order(const Order& order) const {
     // 基础风险检查
     if (order.volume_orign <= 0) return false;
     if (order.price_order < 0) return false;
@@ -642,11 +642,11 @@ bool UnifiedAccount::check_risk_before_order(const Order& order) const {
     return true;
 }
 
-double UnifiedAccount::get_buying_power() const {
+double QA_Account::get_buying_power() const {
     return get_available_cash() / market_preset_.margin_ratio;
 }
 
-double UnifiedAccount::get_margin_usage() const {
+double QA_Account::get_margin_usage() const {
     std::lock_guard<std::mutex> lock(positions_mutex_);
     double margin_used = 0.0;
 
@@ -660,7 +660,7 @@ double UnifiedAccount::get_margin_usage() const {
     return margin_used;
 }
 
-AccountSlice UnifiedAccount::get_current_slice() const {
+AccountSlice QA_Account::get_current_slice() const {
     AccountSlice slice;
     slice.datetime = std::to_string(std::chrono::duration_cast<std::chrono::seconds>(
         std::chrono::system_clock::now().time_since_epoch()).count());
@@ -671,17 +671,17 @@ AccountSlice UnifiedAccount::get_current_slice() const {
     return slice;
 }
 
-void UnifiedAccount::save_slice(const AccountSlice& slice) {
+void QA_Account::save_slice(const AccountSlice& slice) {
     std::lock_guard<std::mutex> lock(history_mutex_);
     history_slices_.push_back(slice);
 }
 
-std::vector<AccountSlice> UnifiedAccount::get_history_slices() const {
+std::vector<AccountSlice> QA_Account::get_history_slices() const {
     std::lock_guard<std::mutex> lock(history_mutex_);
     return history_slices_;
 }
 
-protocol::qifi::QIFI UnifiedAccount::get_qifi() const {
+protocol::qifi::QIFI QA_Account::get_qifi() const {
     protocol::qifi::QIFI qifi;
     qifi.account_cookie = account_cookie_;
     qifi.portfolio = portfolio_cookie_;
@@ -695,7 +695,7 @@ protocol::qifi::QIFI UnifiedAccount::get_qifi() const {
     // 转换持仓信息
     auto positions = get_positions();
     for (const auto& [code, position] : positions) {
-        protocol::qifi::Position qifi_pos;
+        protocol::qifi::QA_Position qifi_pos;
         qifi_pos.instrument_id = code;
         qifi_pos.volume_long = position.volume_long();
         qifi_pos.volume_short = position.volume_short();
@@ -707,7 +707,7 @@ protocol::qifi::QIFI UnifiedAccount::get_qifi() const {
     return qifi;
 }
 
-void UnifiedAccount::from_qifi(const protocol::qifi::QIFI& qifi_data) {
+void QA_Account::from_qifi(const protocol::qifi::QIFI& qifi_data) {
     account_cookie_ = qifi_data.account_cookie;
     portfolio_cookie_ = qifi_data.portfolio;
     user_cookie_ = qifi_data.investor_name;
@@ -720,7 +720,7 @@ void UnifiedAccount::from_qifi(const protocol::qifi::QIFI& qifi_data) {
 
         // 从QIFI重建持仓
         for (const auto& [code, qifi_pos] : qifi_data.positions) {
-            Position position;
+            QA_Position position;
             position.instrument_id = code;
             position.volume_long_today = qifi_pos.volume_long_today;
             position.volume_long_his = qifi_pos.volume_long_his;
@@ -733,11 +733,11 @@ void UnifiedAccount::from_qifi(const protocol::qifi::QIFI& qifi_data) {
     }
 }
 
-bool UnifiedAccount::is_valid() const {
+bool QA_Account::is_valid() const {
     return !account_cookie_.empty() && get_cash() >= 0;
 }
 
-std::string UnifiedAccount::get_status() const {
+std::string QA_Account::get_status() const {
     std::ostringstream oss;
     oss << "Account[" << account_cookie_ << "] ";
     oss << "Cash:" << std::fixed << std::setprecision(2) << get_cash();
@@ -747,7 +747,7 @@ std::string UnifiedAccount::get_status() const {
     return oss.str();
 }
 
-nlohmann::json UnifiedAccount::to_json() const {
+nlohmann::json QA_Account::to_json() const {
     nlohmann::json j;
     j["account_cookie"] = account_cookie_;
     j["portfolio_cookie"] = portfolio_cookie_;
@@ -781,13 +781,13 @@ nlohmann::json UnifiedAccount::to_json() const {
     return j;
 }
 
-UnifiedAccount UnifiedAccount::from_json(const nlohmann::json& j) {
+QA_Account QA_Account::from_json(const nlohmann::json& j) {
     std::string account_cookie = j.at("account_cookie").get<std::string>();
     std::string portfolio_cookie = j.value("portfolio_cookie", "");
     std::string user_cookie = j.value("user_cookie", "");
     double init_cash = j.at("init_cash").get<double>();
 
-    UnifiedAccount account(account_cookie, portfolio_cookie, user_cookie, init_cash);
+    QA_Account account(account_cookie, portfolio_cookie, user_cookie, init_cash);
 
     if (j.contains("cash")) {
         account.cash_.store(j.at("cash").get<double>());
@@ -799,28 +799,28 @@ UnifiedAccount UnifiedAccount::from_json(const nlohmann::json& j) {
     return account;
 }
 
-UnifiedAccount::Statistics UnifiedAccount::get_statistics() const {
+QA_Account::Statistics QA_Account::get_statistics() const {
     return statistics_;
 }
 
 // 私有辅助方法
-std::string UnifiedAccount::generate_order_id() {
+std::string QA_Account::generate_order_id() {
     int counter = order_id_counter_.fetch_add(1);
     return account_cookie_ + "_O_" + std::to_string(counter);
 }
 
-std::string UnifiedAccount::generate_trade_id() {
+std::string QA_Account::generate_trade_id() {
     int counter = trade_id_counter_.fetch_add(1);
     return account_cookie_ + "_T_" + std::to_string(counter);
 }
 
-double UnifiedAccount::calculate_commission(double price, double volume, bool is_buy) const {
+double QA_Account::calculate_commission(double price, double volume, bool is_buy) const {
     double ratio = is_buy ? market_preset_.buy_fee_ratio : market_preset_.sell_fee_ratio;
     double commission = price * volume * ratio;
     return std::max(commission, market_preset_.min_fee);
 }
 
-double UnifiedAccount::calculate_tax(double price, double volume) const {
+double QA_Account::calculate_tax(double price, double volume) const {
     // 只有股票卖出才收印花税
     if (market_preset_.is_stock && market_preset_.tax_ratio > 0) {
         return price * volume * market_preset_.tax_ratio;
@@ -828,7 +828,7 @@ double UnifiedAccount::calculate_tax(double price, double volume) const {
     return 0.0;
 }
 
-bool UnifiedAccount::validate_order_params(const std::string& code, double volume, double price) const {
+bool QA_Account::validate_order_params(const std::string& code, double volume, double price) const {
     if (code.empty()) return false;
     if (volume <= 0) return false;
     if (price < 0) return false;
@@ -841,14 +841,14 @@ bool UnifiedAccount::validate_order_params(const std::string& code, double volum
     return true;
 }
 
-void UnifiedAccount::update_position_from_trade(const std::string& code, double price,
+void QA_Account::update_position_from_trade(const std::string& code, double price,
                                                double volume, bool is_buy) {
     std::lock_guard<std::mutex> lock(positions_mutex_);
 
     auto pos_it = positions_.find(code);
     if (pos_it == positions_.end()) {
         // 新建仓位
-        Position position;
+        QA_Position position;
         position.instrument_id = code;
         if (is_buy) {
             position.volume_long_today = volume;
@@ -860,7 +860,7 @@ void UnifiedAccount::update_position_from_trade(const std::string& code, double 
         positions_[code] = position;
     } else {
         // 更新现有仓位
-        Position& position = pos_it->second;
+        QA_Position& position = pos_it->second;
         double current_net_volume = position.volume_net();
         double new_volume = current_net_volume + (is_buy ? volume : -volume);
 
@@ -880,39 +880,39 @@ void UnifiedAccount::update_position_from_trade(const std::string& code, double 
     }
 }
 
-void UnifiedAccount::freeze_cash_for_order(const Order& order) {
+void QA_Account::freeze_cash_for_order(const Order& order) {
     if (order.direction == "BUY") {
         double freeze_amount = order.volume_orign * order.price_order * market_preset_.margin_ratio;
         frozen_cash_.store(frozen_cash_.load() + freeze_amount);
     }
 }
 
-void UnifiedAccount::unfreeze_cash_for_order(const Order& order) {
+void QA_Account::unfreeze_cash_for_order(const Order& order) {
     if (order.direction == "BUY") {
         double unfreeze_amount = order.volume_orign * order.price_order * market_preset_.margin_ratio;
         frozen_cash_.store(frozen_cash_.load() - unfreeze_amount);
     }
 }
 
-void UnifiedAccount::trigger_order_callback(const Order& order) {
+void QA_Account::trigger_order_callback(const Order& order) {
     if (order_callback_) {
         order_callback_(order);
     }
 }
 
-void UnifiedAccount::trigger_trade_callback(const std::string& trade_id, double price, double volume) {
+void QA_Account::trigger_trade_callback(const std::string& trade_id, double price, double volume) {
     if (trade_callback_) {
         trade_callback_(trade_id, price, volume);
     }
 }
 
-void UnifiedAccount::trigger_position_callback(const std::string& code, const Position& position) {
+void QA_Account::trigger_position_callback(const std::string& code, const QA_Position& position) {
     if (position_callback_) {
         position_callback_(code, position);
     }
 }
 
-void UnifiedAccount::update_statistics(const Order& order) {
+void QA_Account::update_statistics(const Order& order) {
     if (!performance_monitoring_) return;
 
     statistics_.total_orders++;
@@ -927,10 +927,10 @@ void UnifiedAccount::update_statistics(const Order& order) {
 // AccountFactory 实现
 // =======================
 
-std::unique_ptr<UnifiedAccount> AccountFactory::create_account(
+std::unique_ptr<QA_Account> AccountFactory::create_account(
     AccountType type, const std::string& account_cookie, double init_cash) {
 
-    auto account = std::make_unique<UnifiedAccount>(account_cookie, "", "", init_cash);
+    auto account = std::make_unique<QA_Account>(account_cookie, "", "", init_cash);
 
     switch (type) {
         case AccountType::Simple:
@@ -950,37 +950,37 @@ std::unique_ptr<UnifiedAccount> AccountFactory::create_account(
     return account;
 }
 
-std::unique_ptr<UnifiedAccount> AccountFactory::create_stock_account(
+std::unique_ptr<QA_Account> AccountFactory::create_stock_account(
     const std::string& account_cookie, double init_cash) {
 
-    auto account = std::make_unique<UnifiedAccount>(account_cookie, "", "", init_cash);
+    auto account = std::make_unique<QA_Account>(account_cookie, "", "", init_cash);
     account->set_market_preset(MarketPreset::get_stock_preset());
     return account;
 }
 
-std::unique_ptr<UnifiedAccount> AccountFactory::create_future_account(
+std::unique_ptr<QA_Account> AccountFactory::create_future_account(
     const std::string& account_cookie, double init_cash) {
 
-    auto account = std::make_unique<UnifiedAccount>(account_cookie, "", "", init_cash);
+    auto account = std::make_unique<QA_Account>(account_cookie, "", "", init_cash);
     account->set_market_preset(MarketPreset::get_future_preset());
     return account;
 }
 
-std::unique_ptr<UnifiedAccount> AccountFactory::create_forex_account(
+std::unique_ptr<QA_Account> AccountFactory::create_forex_account(
     const std::string& account_cookie, double init_cash) {
 
-    auto account = std::make_unique<UnifiedAccount>(account_cookie, "", "", init_cash);
+    auto account = std::make_unique<QA_Account>(account_cookie, "", "", init_cash);
     account->set_market_preset(MarketPreset::get_forex_preset());
     return account;
 }
 
-std::unique_ptr<UnifiedAccount> AccountFactory::create_from_config(
+std::unique_ptr<QA_Account> AccountFactory::create_from_config(
     const nlohmann::json& config) {
 
     std::string account_cookie = config.at("account_cookie").get<std::string>();
     double init_cash = config.value("init_cash", 1000000.0);
 
-    auto account = std::make_unique<UnifiedAccount>(account_cookie, "", "", init_cash);
+    auto account = std::make_unique<QA_Account>(account_cookie, "", "", init_cash);
 
     if (config.contains("market_preset")) {
         auto preset = MarketPreset::from_json(config.at("market_preset"));
@@ -990,10 +990,10 @@ std::unique_ptr<UnifiedAccount> AccountFactory::create_from_config(
     return account;
 }
 
-std::unique_ptr<UnifiedAccount> AccountFactory::create_from_qifi(
+std::unique_ptr<QA_Account> AccountFactory::create_from_qifi(
     const protocol::qifi::QIFI& qifi_data) {
 
-    auto account = std::make_unique<UnifiedAccount>(qifi_data.account_cookie);
+    auto account = std::make_unique<QA_Account>(qifi_data.account_cookie);
     account->from_qifi(qifi_data);
     return account;
 }
@@ -1002,7 +1002,7 @@ std::unique_ptr<UnifiedAccount> AccountFactory::create_from_qifi(
 // AccountManager 实现
 // =======================
 
-void AccountManager::add_account(std::unique_ptr<UnifiedAccount> account) {
+void AccountManager::add_account(std::unique_ptr<QA_Account> account) {
     std::lock_guard<std::mutex> lock(accounts_mutex_);
     std::string account_cookie = account->get_account_cookie();
     accounts_[account_cookie] = std::move(account);
@@ -1027,13 +1027,13 @@ void AccountManager::remove_account(const std::string& account_cookie) {
     accounts_.erase(account_cookie);
 }
 
-UnifiedAccount* AccountManager::get_account(const std::string& account_cookie) {
+QA_Account* AccountManager::get_account(const std::string& account_cookie) {
     std::lock_guard<std::mutex> lock(accounts_mutex_);
     auto it = accounts_.find(account_cookie);
     return (it != accounts_.end()) ? it->second.get() : nullptr;
 }
 
-const UnifiedAccount* AccountManager::get_account(const std::string& account_cookie) const {
+const QA_Account* AccountManager::get_account(const std::string& account_cookie) const {
     std::lock_guard<std::mutex> lock(accounts_mutex_);
     auto it = accounts_.find(account_cookie);
     return (it != accounts_.end()) ? it->second.get() : nullptr;
@@ -1107,8 +1107,8 @@ AccountManager AccountManager::from_json(const nlohmann::json& j) {
 
     if (j.contains("accounts")) {
         for (const auto& account_json : j.at("accounts")) {
-            auto account = std::make_unique<UnifiedAccount>(
-                UnifiedAccount::from_json(account_json));
+            auto account = std::make_unique<QA_Account>(
+                QA_Account::from_json(account_json));
             manager.add_account(std::move(account));
         }
     }
@@ -1116,11 +1116,11 @@ AccountManager AccountManager::from_json(const nlohmann::json& j) {
     return manager;
 }
 
-void UnifiedAccount::set_market_preset(const MarketPreset& preset) {
+void QA_Account::set_market_preset(const MarketPreset& preset) {
     market_preset_ = preset;
 }
 
-std::vector<std::string> UnifiedAccount::get_trade_history() const {
+std::vector<std::string> QA_Account::get_trade_history() const {
     std::lock_guard<std::mutex> lock(history_mutex_);
     return trade_history_;
 }

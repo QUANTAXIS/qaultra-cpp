@@ -1,32 +1,32 @@
 /**
  * @file benchmark_account.cpp
- * @brief UnifiedAccount 性能基准测试
+ * @brief QA_Account 性能基准测试
  *
  * 测试账户操作的性能，包括订单处理、持仓更新、QIFI转换等
  */
 
 #include <benchmark/benchmark.h>
-#include "qaultra/account/unified_account.hpp"
+#include "qaultra/account/qa_account.hpp"
 #include "qaultra/account/market_preset.hpp"
 #include <random>
 #include <thread>
 
 using namespace qaultra::account;
 
-// ===== UnifiedAccount 基础性能测试 =====
+// ===== QA_Account 基础性能测试 =====
 
-static void BM_UnifiedAccount_Creation(benchmark::State& state) {
+static void BM_QA_Account_Creation(benchmark::State& state) {
     for (auto _ : state) {
-        auto account = std::make_unique<UnifiedAccount>(
+        auto account = std::make_unique<QA_Account>(
             "BENCH_ACCOUNT", "BENCH_PORTFOLIO", "BENCH_USER", 1000000.0, false
         );
         benchmark::DoNotOptimize(account);
     }
 }
-BENCHMARK(BM_UnifiedAccount_Creation);
+BENCHMARK(BM_QA_Account_Creation);
 
-static void BM_UnifiedAccount_StockBuyOrders(benchmark::State& state) {
-    auto account = std::make_unique<UnifiedAccount>(
+static void BM_QA_Account_StockBuyOrders(benchmark::State& state) {
+    auto account = std::make_unique<QA_Account>(
         "BENCH_ACCOUNT", "BENCH_PORTFOLIO", "BENCH_USER", 10000000.0, false
     );
     account->set_market_preset(MarketPreset::get_stock_preset());
@@ -38,10 +38,10 @@ static void BM_UnifiedAccount_StockBuyOrders(benchmark::State& state) {
         ++order_count;
     }
 }
-BENCHMARK(BM_UnifiedAccount_StockBuyOrders);
+BENCHMARK(BM_QA_Account_StockBuyOrders);
 
-static void BM_UnifiedAccount_FutureBuyOpen(benchmark::State& state) {
-    auto account = std::make_unique<UnifiedAccount>(
+static void BM_QA_Account_FutureBuyOpen(benchmark::State& state) {
+    auto account = std::make_unique<QA_Account>(
         "BENCH_ACCOUNT", "BENCH_PORTFOLIO", "BENCH_USER", 10000000.0, false
     );
     account->set_market_preset(MarketPreset::get_future_preset());
@@ -53,12 +53,12 @@ static void BM_UnifiedAccount_FutureBuyOpen(benchmark::State& state) {
         ++order_count;
     }
 }
-BENCHMARK(BM_UnifiedAccount_FutureBuyOpen);
+BENCHMARK(BM_QA_Account_FutureBuyOpen);
 
 // ===== 交易执行性能测试 =====
 
-static void BM_UnifiedAccount_TradeExecution(benchmark::State& state) {
-    auto account = std::make_unique<UnifiedAccount>(
+static void BM_QA_Account_TradeExecution(benchmark::State& state) {
+    auto account = std::make_unique<QA_Account>(
         "BENCH_ACCOUNT", "BENCH_PORTFOLIO", "BENCH_USER", 10000000.0, false
     );
     account->set_market_preset(MarketPreset::get_stock_preset());
@@ -77,10 +77,10 @@ static void BM_UnifiedAccount_TradeExecution(benchmark::State& state) {
         ++trade_count;
     }
 }
-BENCHMARK(BM_UnifiedAccount_TradeExecution);
+BENCHMARK(BM_QA_Account_TradeExecution);
 
-static void BM_UnifiedAccount_PositionUpdates(benchmark::State& state) {
-    auto account = std::make_unique<UnifiedAccount>(
+static void BM_QA_Account_PositionUpdates(benchmark::State& state) {
+    auto account = std::make_unique<QA_Account>(
         "BENCH_ACCOUNT", "BENCH_PORTFOLIO", "BENCH_USER", 10000000.0, false
     );
     account->set_market_preset(MarketPreset::get_stock_preset());
@@ -100,15 +100,15 @@ static void BM_UnifiedAccount_PositionUpdates(benchmark::State& state) {
         benchmark::DoNotOptimize(price);
     }
 }
-BENCHMARK(BM_UnifiedAccount_PositionUpdates);
+BENCHMARK(BM_QA_Account_PositionUpdates);
 
 // ===== 大批量操作性能测试 =====
 
-static void BM_UnifiedAccount_BatchOrderSubmission(benchmark::State& state) {
+static void BM_QA_Account_BatchOrderSubmission(benchmark::State& state) {
     const int batch_size = state.range(0);
 
     for (auto _ : state) {
-        auto account = std::make_unique<UnifiedAccount>(
+        auto account = std::make_unique<QA_Account>(
             "BATCH_ACCOUNT", "BATCH_PORTFOLIO", "BATCH_USER", 100000000.0, false
         );
         account->set_market_preset(MarketPreset::get_stock_preset());
@@ -133,12 +133,12 @@ static void BM_UnifiedAccount_BatchOrderSubmission(benchmark::State& state) {
         benchmark::DoNotOptimize(order_ids);
     }
 }
-BENCHMARK(BM_UnifiedAccount_BatchOrderSubmission)->Range(100, 10000);
+BENCHMARK(BM_QA_Account_BatchOrderSubmission)->Range(100, 10000);
 
-static void BM_UnifiedAccount_BatchTradeProcessing(benchmark::State& state) {
+static void BM_QA_Account_BatchTradeProcessing(benchmark::State& state) {
     const int batch_size = state.range(0);
 
-    auto account = std::make_unique<UnifiedAccount>(
+    auto account = std::make_unique<QA_Account>(
         "BATCH_ACCOUNT", "BATCH_PORTFOLIO", "BATCH_USER", 100000000.0, false
     );
     account->set_market_preset(MarketPreset::get_stock_preset());
@@ -164,12 +164,12 @@ static void BM_UnifiedAccount_BatchTradeProcessing(benchmark::State& state) {
         );
     }
 }
-BENCHMARK(BM_UnifiedAccount_BatchTradeProcessing)->Range(100, 5000);
+BENCHMARK(BM_QA_Account_BatchTradeProcessing)->Range(100, 5000);
 
 // ===== QIFI 协议性能测试 =====
 
-static void BM_UnifiedAccount_QIFIConversion(benchmark::State& state) {
-    auto account = std::make_unique<UnifiedAccount>(
+static void BM_QA_Account_QIFIConversion(benchmark::State& state) {
+    auto account = std::make_unique<QA_Account>(
         "QIFI_ACCOUNT", "QIFI_PORTFOLIO", "QIFI_USER", 1000000.0, false
     );
     account->set_market_preset(MarketPreset::get_stock_preset());
@@ -186,10 +186,10 @@ static void BM_UnifiedAccount_QIFIConversion(benchmark::State& state) {
         benchmark::DoNotOptimize(qifi_data);
     }
 }
-BENCHMARK(BM_UnifiedAccount_QIFIConversion);
+BENCHMARK(BM_QA_Account_QIFIConversion);
 
-static void BM_UnifiedAccount_JSONSerialization(benchmark::State& state) {
-    auto account = std::make_unique<UnifiedAccount>(
+static void BM_QA_Account_JSONSerialization(benchmark::State& state) {
+    auto account = std::make_unique<QA_Account>(
         "JSON_ACCOUNT", "JSON_PORTFOLIO", "JSON_USER", 1000000.0, false
     );
     account->set_market_preset(MarketPreset::get_stock_preset());
@@ -206,15 +206,15 @@ static void BM_UnifiedAccount_JSONSerialization(benchmark::State& state) {
         benchmark::DoNotOptimize(json_data);
     }
 }
-BENCHMARK(BM_UnifiedAccount_JSONSerialization);
+BENCHMARK(BM_QA_Account_JSONSerialization);
 
 // ===== 内存使用性能测试 =====
 
-static void BM_UnifiedAccount_MemoryFootprint(benchmark::State& state) {
+static void BM_QA_Account_MemoryFootprint(benchmark::State& state) {
     const int num_positions = state.range(0);
 
     for (auto _ : state) {
-        auto account = std::make_unique<UnifiedAccount>(
+        auto account = std::make_unique<QA_Account>(
             "MEM_ACCOUNT", "MEM_PORTFOLIO", "MEM_USER", 100000000.0, false
         );
         account->set_market_preset(MarketPreset::get_stock_preset());
@@ -237,14 +237,14 @@ static void BM_UnifiedAccount_MemoryFootprint(benchmark::State& state) {
         );
     }
 }
-BENCHMARK(BM_UnifiedAccount_MemoryFootprint)->Range(10, 10000);
+BENCHMARK(BM_QA_Account_MemoryFootprint)->Range(10, 10000);
 
 // ===== 多线程性能测试 =====
 
-static void BM_UnifiedAccount_ThreadSafety(benchmark::State& state) {
+static void BM_QA_Account_ThreadSafety(benchmark::State& state) {
     const int num_threads = state.range(0);
 
-    auto account = std::make_unique<UnifiedAccount>(
+    auto account = std::make_unique<QA_Account>(
         "MT_ACCOUNT", "MT_PORTFOLIO", "MT_USER", 100000000.0, false
     );
     account->set_market_preset(MarketPreset::get_stock_preset());
@@ -282,12 +282,12 @@ static void BM_UnifiedAccount_ThreadSafety(benchmark::State& state) {
         );
     }
 }
-BENCHMARK(BM_UnifiedAccount_ThreadSafety)->Arg(1)->Arg(2)->Arg(4)->Arg(8);
+BENCHMARK(BM_QA_Account_ThreadSafety)->Arg(1)->Arg(2)->Arg(4)->Arg(8);
 
 // ===== 现实交易场景模拟 =====
 
-static void BM_UnifiedAccount_RealisticTradingDay(benchmark::State& state) {
-    auto account = std::make_unique<UnifiedAccount>(
+static void BM_QA_Account_RealisticTradingDay(benchmark::State& state) {
+    auto account = std::make_unique<QA_Account>(
         "REALISTIC_ACCOUNT", "REALISTIC_PORTFOLIO", "REALISTIC_USER", 10000000.0, false
     );
     account->set_market_preset(MarketPreset::get_stock_preset());
@@ -335,12 +335,12 @@ static void BM_UnifiedAccount_RealisticTradingDay(benchmark::State& state) {
         benchmark::DoNotOptimize(account->get_total_value());
     }
 }
-BENCHMARK(BM_UnifiedAccount_RealisticTradingDay);
+BENCHMARK(BM_QA_Account_RealisticTradingDay);
 
 // ===== 资产计算性能测试 =====
 
-static void BM_UnifiedAccount_AssetCalculation(benchmark::State& state) {
-    auto account = std::make_unique<UnifiedAccount>(
+static void BM_QA_Account_AssetCalculation(benchmark::State& state) {
+    auto account = std::make_unique<QA_Account>(
         "CALC_ACCOUNT", "CALC_PORTFOLIO", "CALC_USER", 10000000.0, false
     );
     account->set_market_preset(MarketPreset::get_stock_preset());
@@ -367,4 +367,4 @@ static void BM_UnifiedAccount_AssetCalculation(benchmark::State& state) {
         benchmark::DoNotOptimize(frozen_cash);
     }
 }
-BENCHMARK(BM_UnifiedAccount_AssetCalculation);
+BENCHMARK(BM_QA_Account_AssetCalculation);

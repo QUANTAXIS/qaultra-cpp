@@ -9,9 +9,9 @@
 
 namespace qaultra::account {
 
-// Position类实现 - 完全匹配Rust QA_Postions实现
+// Position类实现 - 完全匹配Rust QA_Position实现
 
-Position::Position(const std::string& code,
+QA_Position::QA_Position(const std::string& code,
                    const std::string& account_cookie,
                    const std::string& user_id,
                    const std::string& portfolio_cookie)
@@ -32,21 +32,21 @@ Position::Position(const std::string& code,
     preset = get_preset_for_market(market_type);
 }
 
-Position Position::new_position(const std::string& code,
+QA_Position QA_Position::new_position(const std::string& code,
                                const std::string& account_cookie,
                                const std::string& user_id,
                                const std::string& portfolio_cookie)
 {
-    return Position(code, account_cookie, user_id, portfolio_cookie);
+    return QA_Position(code, account_cookie, user_id, portfolio_cookie);
 }
 
-Position Position::from_qifi(const std::string& account_cookie,
+QA_Position QA_Position::from_qifi(const std::string& account_cookie,
                             const std::string& user_cookie,
                             const std::string& account_id,
                             const std::string& portfolio_cookie,
                             const protocol::QIFIPosition& qifi_pos)
 {
-    Position pos;
+    QA_Position pos;
 
     // 基础信息
     pos.code = qifi_pos.code;
@@ -99,39 +99,39 @@ Position Position::from_qifi(const std::string& account_cookie,
 
 // 核心计算方法 - 完全匹配Rust实现
 
-double Position::volume_long() const {
+double QA_Position::volume_long() const {
     return volume_long_today + volume_long_his;
 }
 
-double Position::volume_short() const {
+double QA_Position::volume_short() const {
     return volume_short_today + volume_short_his;
 }
 
-double Position::volume_long_frozen() const {
+double QA_Position::volume_long_frozen() const {
     return volume_long_frozen_today + volume_long_frozen_his;
 }
 
-double Position::volume_short_frozen() const {
+double QA_Position::volume_short_frozen() const {
     return volume_short_frozen_today + volume_short_frozen_his;
 }
 
-double Position::volume_long_avaliable() const {
+double QA_Position::volume_long_avaliable() const {
     return volume_long() - volume_long_frozen();
 }
 
-double Position::volume_short_avaliable() const {
+double QA_Position::volume_short_avaliable() const {
     return volume_short() - volume_short_frozen();
 }
 
-double Position::volume_net() const {
+double QA_Position::volume_net() const {
     return volume_long() - volume_short();
 }
 
-double Position::volume_total() const {
+double QA_Position::volume_total() const {
     return volume_long() + volume_short();
 }
 
-double Position::market_value() const {
+double QA_Position::market_value() const {
     if (lastest_price <= 0.0) return 0.0;
 
     if (market_type == "stock_cn") {
@@ -145,48 +145,48 @@ double Position::market_value() const {
     return 0.0;
 }
 
-double Position::market_value_long() const {
+double QA_Position::market_value_long() const {
     if (lastest_price <= 0.0 || volume_long() <= 0.0) return 0.0;
     return volume_long() * preset.unit_table * lastest_price;
 }
 
-double Position::market_value_short() const {
+double QA_Position::market_value_short() const {
     if (lastest_price <= 0.0 || volume_short() <= 0.0) return 0.0;
     return volume_short() * preset.unit_table * lastest_price;
 }
 
 // 盈亏计算 - 匹配Rust实现
 
-double Position::position_profit() const {
+double QA_Position::position_profit() const {
     return position_profit_long() + position_profit_short();
 }
 
-double Position::position_profit_long() const {
+double QA_Position::position_profit_long() const {
     if (volume_long() <= 0.0 || position_price_long <= 0.0) return 0.0;
 
     // 持仓盈亏 = (当前价格 - 持仓均价) * 持仓量 * 合约乘数
     return (lastest_price - position_price_long) * volume_long() * preset.unit_table;
 }
 
-double Position::position_profit_short() const {
+double QA_Position::position_profit_short() const {
     if (volume_short() <= 0.0 || position_price_short <= 0.0) return 0.0;
 
     // 空头盈亏 = (持仓均价 - 当前价格) * 持仓量 * 合约乘数
     return (position_price_short - lastest_price) * volume_short() * preset.unit_table;
 }
 
-double Position::float_profit() const {
+double QA_Position::float_profit() const {
     return float_profit_long() + float_profit_short();
 }
 
-double Position::float_profit_long() const {
+double QA_Position::float_profit_long() const {
     if (volume_long() <= 0.0 || open_price_long <= 0.0) return 0.0;
 
     // 浮动盈亏 = (当前价格 - 开仓均价) * 持仓量 * 合约乘数
     return (lastest_price - open_price_long) * volume_long() * preset.unit_table;
 }
 
-double Position::float_profit_short() const {
+double QA_Position::float_profit_short() const {
     if (volume_short() <= 0.0 || open_price_short <= 0.0) return 0.0;
 
     // 空头浮动盈亏 = (开仓均价 - 当前价格) * 持仓量 * 合约乘数
@@ -195,23 +195,23 @@ double Position::float_profit_short() const {
 
 // 均价计算
 
-double Position::avg_price_long() const {
+double QA_Position::avg_price_long() const {
     if (volume_long() <= 0.0) return 0.0;
     return position_cost_long / (volume_long() * preset.unit_table);
 }
 
-double Position::avg_price_short() const {
+double QA_Position::avg_price_short() const {
     if (volume_short() <= 0.0) return 0.0;
     return position_cost_short / (volume_short() * preset.unit_table);
 }
 
 // 保证金计算
 
-double Position::margin() const {
+double QA_Position::margin() const {
     return margin_long + margin_short;
 }
 
-double Position::margin_required() const {
+double QA_Position::margin_required() const {
     if (market_type == "future_cn") {
         double long_margin = volume_long() * preset.unit_table * lastest_price * preset.margin_ratio;
         double short_margin = volume_short() * preset.unit_table * lastest_price * preset.margin_ratio;
@@ -222,7 +222,7 @@ double Position::margin_required() const {
 
 // 交易操作方法 - 匹配Rust receive_deal方法
 
-void Position::receive_deal(const std::string& trade_id,
+void QA_Position::receive_deal(const std::string& trade_id,
                            const std::string& direction,
                            const std::string& offset,
                            double volume,
@@ -344,7 +344,7 @@ void Position::receive_deal(const std::string& trade_id,
     validate_data();
 }
 
-void Position::on_price_change(double new_price, const std::string& datetime) {
+void QA_Position::on_price_change(double new_price, const std::string& datetime) {
     lastest_price = new_price;
     lastest_datetime = datetime;
     update_timestamp();
@@ -353,7 +353,7 @@ void Position::on_price_change(double new_price, const std::string& datetime) {
     recalculate_margins();
 }
 
-void Position::freeze_position(const std::string& direction,
+void QA_Position::freeze_position(const std::string& direction,
                               const std::string& offset,
                               double volume)
 {
@@ -368,7 +368,7 @@ void Position::freeze_position(const std::string& direction,
     }
 }
 
-void Position::unfreeze_position(const std::string& direction,
+void QA_Position::unfreeze_position(const std::string& direction,
                                 const std::string& offset,
                                 double volume)
 {
@@ -385,23 +385,23 @@ void Position::unfreeze_position(const std::string& direction,
 
 // 查询方法
 
-bool Position::is_empty() const {
+bool QA_Position::is_empty() const {
     return volume_long() <= 0.001 && volume_short() <= 0.001;
 }
 
-bool Position::is_long() const {
+bool QA_Position::is_long() const {
     return volume_long() > 0.001;
 }
 
-bool Position::is_short() const {
+bool QA_Position::is_short() const {
     return volume_short() > 0.001;
 }
 
-bool Position::has_position() const {
+bool QA_Position::has_position() const {
     return !is_empty();
 }
 
-bool Position::can_close_today(const std::string& direction, double volume) const {
+bool QA_Position::can_close_today(const std::string& direction, double volume) const {
     if (direction == "BUY") {
         return volume_short_today >= volume;
     } else {
@@ -411,7 +411,7 @@ bool Position::can_close_today(const std::string& direction, double volume) cons
 
 // 序列化方法
 
-nlohmann::json Position::to_json() const {
+nlohmann::json QA_Position::to_json() const {
     nlohmann::json j;
 
     // 基础信息
@@ -468,8 +468,8 @@ nlohmann::json Position::to_json() const {
     return j;
 }
 
-Position Position::from_json(const nlohmann::json& j) {
-    Position pos;
+QA_Position QA_Position::from_json(const nlohmann::json& j) {
+    QA_Position pos;
 
     // 从JSON恢复所有字段
     pos.code = j.value("code", "");
@@ -514,13 +514,13 @@ Position Position::from_json(const nlohmann::json& j) {
     pos.lastest_datetime = j.value("lastest_datetime", "");
 
     if (j.contains("preset")) {
-        pos.preset = Position::CodePreset::from_json(j["preset"]);
+        pos.preset = QA_Position::CodePreset::from_json(j["preset"]);
     }
 
     return pos;
 }
 
-protocol::QIFIPosition Position::to_qifi() const {
+protocol::QIFIPosition QA_Position::to_qifi() const {
     protocol::QIFIPosition qifi;
 
     qifi.code = code;
@@ -563,15 +563,15 @@ protocol::QIFIPosition Position::to_qifi() const {
 
 // 工具方法
 
-std::string Position::get_market_type() const {
+std::string QA_Position::get_market_type() const {
     return market_type;
 }
 
-void Position::update_timestamp() {
+void QA_Position::update_timestamp() {
     lastupdatetime = get_current_time();
 }
 
-void Position::settle_position() {
+void QA_Position::settle_position() {
     // 日终结算：今日持仓转为历史持仓
     volume_long_his += volume_long_today;
     volume_long_today = 0.0;
@@ -585,8 +585,8 @@ void Position::settle_position() {
     update_timestamp();
 }
 
-void Position::message() const {
-    std::cout << "Position Info for " << code << ":" << std::endl;
+void QA_Position::message() const {
+    std::cout << "QA_Position Info for " << code << ":" << std::endl;
     std::cout << "  Long: " << volume_long() << " (Today: " << volume_long_today << ", His: " << volume_long_his << ")" << std::endl;
     std::cout << "  Short: " << volume_short() << " (Today: " << volume_short_today << ", His: " << volume_short_his << ")" << std::endl;
     std::cout << "  Net: " << volume_net() << std::endl;
@@ -595,9 +595,9 @@ void Position::message() const {
     std::cout << "  Latest Price: " << lastest_price << std::endl;
 }
 
-std::string Position::to_string() const {
+std::string QA_Position::to_string() const {
     std::stringstream ss;
-    ss << "Position[" << code << "] ";
+    ss << "QA_Position[" << code << "] ";
     ss << "Long:" << volume_long() << " ";
     ss << "Short:" << volume_short() << " ";
     ss << "Net:" << volume_net() << " ";
@@ -608,7 +608,7 @@ std::string Position::to_string() const {
 
 // 私有方法实现
 
-void Position::update_position_costs() {
+void QA_Position::update_position_costs() {
     if (volume_long() > 0) {
         position_price_long = position_cost_long / (volume_long() * preset.unit_table);
     } else {
@@ -624,7 +624,7 @@ void Position::update_position_costs() {
     }
 }
 
-void Position::update_open_costs() {
+void QA_Position::update_open_costs() {
     if (volume_long() > 0) {
         open_price_long = open_cost_long / (volume_long() * preset.unit_table);
     } else {
@@ -640,7 +640,7 @@ void Position::update_open_costs() {
     }
 }
 
-void Position::recalculate_margins() {
+void QA_Position::recalculate_margins() {
     if (market_type == "future_cn") {
         margin_long = volume_long() * preset.unit_table * lastest_price * preset.margin_ratio;
         margin_short = volume_short() * preset.unit_table * lastest_price * preset.margin_ratio;
@@ -650,7 +650,7 @@ void Position::recalculate_margins() {
     }
 }
 
-void Position::validate_data() const {
+void QA_Position::validate_data() const {
     // 验证数据一致性（可添加断言或日志）
     if (volume_long_today < 0 || volume_long_his < 0 ||
         volume_short_today < 0 || volume_short_his < 0) {
@@ -658,7 +658,7 @@ void Position::validate_data() const {
     }
 }
 
-std::string Position::get_current_time() const {
+std::string QA_Position::get_current_time() const {
     auto now = std::chrono::system_clock::now();
     auto time_t = std::chrono::system_clock::to_time_t(now);
 
@@ -667,11 +667,11 @@ std::string Position::get_current_time() const {
     return oss.str();
 }
 
-std::string Position::adjust_market_type(const std::string& code) const {
+std::string QA_Position::adjust_market_type(const std::string& code) const {
     return adjust_market(code);
 }
 
-std::string Position::get_exchange_from_code(const std::string& code) const {
+std::string QA_Position::get_exchange_from_code(const std::string& code) const {
     // 简化的交易所判断逻辑
     if (code.find("XSHG") != std::string::npos) return "XSHG";
     if (code.find("XSHE") != std::string::npos) return "XSHE";
@@ -686,7 +686,7 @@ std::string Position::get_exchange_from_code(const std::string& code) const {
     return "UNKNOWN";
 }
 
-Position::CodePreset Position::get_preset_for_market(const std::string& market_type) const {
+QA_Position::CodePreset QA_Position::get_preset_for_market(const std::string& market_type) const {
     CodePreset preset;
 
     if (market_type == "stock_cn") {
@@ -712,7 +712,7 @@ Position::CodePreset Position::get_preset_for_market(const std::string& market_t
 
 // CodePreset实现
 
-nlohmann::json Position::CodePreset::to_json() const {
+nlohmann::json QA_Position::CodePreset::to_json() const {
     nlohmann::json j;
     j["name"] = name;
     j["unit_table"] = unit_table;
@@ -724,7 +724,7 @@ nlohmann::json Position::CodePreset::to_json() const {
     return j;
 }
 
-Position::CodePreset Position::CodePreset::from_json(const nlohmann::json& j) {
+QA_Position::CodePreset QA_Position::CodePreset::from_json(const nlohmann::json& j) {
     CodePreset preset;
     preset.name = j.value("name", "");
     preset.unit_table = j.value("unit_table", 1);
@@ -738,7 +738,7 @@ Position::CodePreset Position::CodePreset::from_json(const nlohmann::json& j) {
 
 // PositionStats实现
 
-void PositionStats::update(const Position& pos) {
+void PositionStats::update(const QA_Position& pos) {
     total_positions++;
 
     if (pos.has_position()) {

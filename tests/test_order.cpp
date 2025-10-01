@@ -6,8 +6,15 @@ using namespace qaultra::account;
 class OrderTest : public ::testing::Test {
 protected:
     void SetUp() override {
-        order = std::make_unique<Order>("order_001", "account_001", "000001",
-                                       Direction::BUY, 10.0, 1000.0);
+        order = std::make_unique<Order>();
+        order->order_id = "order_001";
+        order->account_cookie = "account_001";
+        order->instrument_id = "000001";
+        order->direction = "BUY";
+        order->price_order = 10.0;
+        order->volume_orign = 1000.0;
+        order->volume_left = 1000.0;
+        order->status = "NEW";
     }
 
     std::unique_ptr<Order> order;
@@ -15,14 +22,14 @@ protected:
 
 TEST_F(OrderTest, BasicProperties) {
     EXPECT_EQ(order->order_id, "order_001");
-    EXPECT_EQ(order->account_id, "account_001");
-    EXPECT_EQ(order->code, "000001");
-    EXPECT_EQ(order->direction, Direction::BUY);
-    EXPECT_EQ(order->price, 10.0);
-    EXPECT_EQ(order->volume, 1000.0);
+    EXPECT_EQ(order->account_cookie, "account_001");
+    EXPECT_EQ(order->instrument_id, "000001");
+    EXPECT_EQ(order->direction, "BUY");
+    EXPECT_EQ(order->price_order, 10.0);
+    EXPECT_EQ(order->volume_orign, 1000.0);
     EXPECT_EQ(order->volume_left, 1000.0);
-    EXPECT_EQ(order->volume_filled, 0.0);
-    EXPECT_EQ(order->status, OrderStatus::PENDING);
+    EXPECT_EQ(order->volume_fill, 0.0);
+    EXPECT_EQ(order->status, "NEW");
 }
 
 TEST_F(OrderTest, OrderStatus) {
@@ -59,7 +66,7 @@ TEST_F(OrderTest, OverFill) {
     // Try to fill more than available
     EXPECT_FALSE(order->fill(1500.0, 10.1));
     EXPECT_EQ(order->volume_filled, 0.0);
-    EXPECT_EQ(order->status, OrderStatus::PENDING);
+    EXPECT_EQ(order->status, OrderStatus::NEW);
 }
 
 TEST_F(OrderTest, Cancel) {

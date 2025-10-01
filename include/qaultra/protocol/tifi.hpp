@@ -176,7 +176,7 @@ struct Trade {
 /**
  * @brief 持仓信息结构 - TIFI格式
  */
-struct Position {
+struct QA_Position {
     // 基本信息
     std::string account_id;             // 账户ID
     std::string user_id;                // 用户ID
@@ -236,7 +236,7 @@ struct Position {
     }
 
     nlohmann::json to_json() const;
-    static Position from_json(const nlohmann::json& j);
+    static QA_Position from_json(const nlohmann::json& j);
 };
 
 /**

@@ -21,7 +21,7 @@
 namespace qaultra {
     namespace account {
         class Account;
-        class Position;
+        class QA_Position;
         class Order;
         class PositionManager;
         class OrderManager;
@@ -77,7 +77,7 @@ enum class OrderStatus {
     REJECTED
 };
 
-/// Position side
+/// QA_Position side
 enum class PositionSide {
     LONG = 1,
     SHORT = -1
