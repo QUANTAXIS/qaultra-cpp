@@ -1,5 +1,5 @@
 #include <gtest/gtest.h>
-#include "qaultra/account/account_full.hpp"
+#include "qaultra/account/qa_account.hpp"
 #include "qaultra/protocol/qifi.hpp"
 
 using namespace qaultra;
