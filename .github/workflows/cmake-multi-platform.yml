@@ -1,5 +1,5 @@
-# CMake build on multiple platforms
-name: CMake on multiple platforms
+# CMake build on Linux
+name: CMake Build (Linux)
 
 on:
   push:
@@ -15,26 +15,16 @@ jobs:
       fail-fast: false
 
       matrix:
-        os: [ubuntu-latest, windows-latest]
+        os: [ubuntu-latest]
         build_type: [Release]
-        c_compiler: [gcc, clang, cl]
+        c_compiler: [gcc, clang]
         include:
-          - os: windows-latest
-            c_compiler: cl
-            cpp_compiler: cl
           - os: ubuntu-latest
             c_compiler: gcc
             cpp_compiler: g++
           - os: ubuntu-latest
             c_compiler: clang
             cpp_compiler: clang++
-        exclude:
-          - os: windows-latest
-            c_compiler: gcc
-          - os: windows-latest
-            c_compiler: clang
-          - os: ubuntu-latest
-            c_compiler: cl
 
     steps:
     - uses: actions/checkout@v4
@@ -49,8 +39,7 @@ jobs:
     # 依赖项安装
     # ============================================================
 
-    - name: Install dependencies (Ubuntu)
-      if: runner.os == 'Linux'
+    - name: Install dependencies
       run: |
         sudo apt-get update
         sudo apt-get install -y \
@@ -58,16 +47,7 @@ jobs:
           libgtest-dev \
           cmake \
           build-essential
-        echo "Ubuntu dependencies installed"
-
-    - name: Install dependencies (Windows)
-      if: runner.os == 'Windows'
-      shell: pwsh
-      run: |
-        # 使用 vcpkg 安装依赖
-        vcpkg install nlohmann-json:x64-windows
-        vcpkg install gtest:x64-windows
-        echo "Windows dependencies installed"
+        echo "Dependencies installed"
 
     # ============================================================
     # CMake 配置
@@ -115,6 +95,6 @@ jobs:
         name: qaultra-${{ matrix.os }}-${{ matrix.c_compiler }}-${{ matrix.build_type }}
         path: |
           ${{ steps.strings.outputs.build-output-dir }}/libqaultra.a
-          ${{ steps.strings.outputs.build-output-dir }}/qaultra.lib
-          ${{ steps.strings.outputs.build-output-dir }}/cross_lang_cpp_*
+          ${{ steps.strings.outputs.build-output-dir }}/cross_lang_cpp_publisher
+          ${{ steps.strings.outputs.build-output-dir }}/cross_lang_cpp_subscriber
         if-no-files-found: ignore
