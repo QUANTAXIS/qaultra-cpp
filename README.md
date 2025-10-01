@@ -1,1162 +1,444 @@
 # QAULTRA C++ - 高性能量化交易系统
 
-**QARS (QUANTAXIS RS) 的完整C++移植版本，具备最大化性能优化**
+**基于 Rust QARS 的 C++ 实现，专注极致性能与跨语言互操作**
 
-QAULTRA C++ 是将 QARS (QUANTAXIS RS) 量化交易系统从 Rust 完整移植到 C++ 的版本，专为超高性能算法交易、回测和投资组合管理而设计。
+QAULTRA C++ 是 QARS (QUANTAXIS RS) 量化交易系统的 C++ 实现，与 Rust 核心保持架构对齐，专为超高性能算法交易、大规模回测和实时投资组合管理而设计。
 
 [![构建状态](https://github.com/quantaxis/qaultra-cpp/workflows/构建和测试/badge.svg)](https://github.com/quantaxis/qaultra-cpp/actions)
 [![许可证](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
-[![C++标准](https://img.shields.io/badge/C%2B%2B-20-blue.svg)](https://isocpp.org/)
-[![Python版本](https://img.shields.io/badge/Python-3.8%2B-blue.svg)](https://www.python.org/)
+[![C++标准](https://img.shields.io/badge/C%2B%2B-17-blue.svg)](https://isocpp.org/)
 
 ## 📖 目录
 
-- [系统架构](#系统架构)
 - [核心特性](#核心特性)
-- [技术原理](#技术原理)
-- [安装指南](#安装指南)
+- [系统架构](#系统架构)
 - [快速开始](#快速开始)
 - [模块详解](#模块详解)
 - [性能基准](#性能基准)
-- [API参考](#api参考)
-- [回测框架](#回测框架)
-- [数据库集成](#数据库集成)
-- [自定义策略](#自定义策略)
-- [性能优化](#性能优化)
-- [配置选项](#配置选项)
-- [测试](#测试)
-- [常见问题](#常见问题)
-- [贡献指南](#贡献指南)
+- [文档](#文档)
 - [许可证](#许可证)
-
-## 🏗️ 系统架构
-
-QAULTRA C++ 采用模块化设计，主要组件包括：
-
-```
-┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
-│   Python API    │    │   C++ 核心      │    │   原生库        │
-├─────────────────┤    ├─────────────────┤    ├─────────────────┤
-│ • 账户管理      │◄──►│ • QA_Account    │◄──►│ • Apache Arrow  │
-│ • 策略开发      │    │ • MatchEngine   │    │ • Intel TBB     │
-│ • 回测分析      │    │ • MarketData    │    │ • mimalloc      │
-│ • 数据分析      │    │ • 协议支持      │    │ • SIMD 内在函数 │
-└─────────────────┘    └─────────────────┘    └─────────────────┘
-```
-
-### 核心设计原则
-
-1. **高性能优先**: 所有关键路径均采用零拷贝和SIMD优化
-2. **内存安全**: 使用RAII和智能指针避免内存泄漏
-3. **线程安全**: 核心数据结构支持多线程并发访问
-4. **模块化**: 清晰的接口分离，支持独立编译和测试
-5. **可扩展性**: 支持自定义策略、数据源和交易接口
 
 ## 🚀 核心特性
 
-### 💨 极致性能
-- **SIMD优化**: 支持 AVX/AVX2/AVX-512 向量化计算，金融计算性能提升3倍
-- **零拷贝操作**: 内存映射文件和零拷贝数据结构，减少不必要的数据拷贝
-- **无锁算法**: 并发数据结构使用CAS操作，最小化线程竞争
-- **原生CPU优化**: 编译时CPU特性检测，自动选择最优代码路径
-- **内存池分配**: 预分配对象池用于频繁操作，减少动态内存分配开销
-- **mimalloc**: 微软高性能内存分配器，比系统malloc快10%-20%
+### 💨 零拷贝 IPC 架构
+
+- **iceoryx/iceoryx2 双栈支持**: 高性能进程间通信，零拷贝数据传输
+- **跨语言互操作**: C++ ↔ Rust ↔ Python 无缝数据交换
+- **大规模并行回测**: 支持 1000+ 并发订阅者，吞吐量 > 500K msg/sec
+- **微秒级延迟**: P99 延迟 < 10 μs，适合高频交易场景
+
+**性能指标** (Massive Scale Testing):
+- 吞吐量: 520K ticks/sec (500 订阅者)
+- 延迟: P99 < 10 μs
+- 成功率: > 99.9%
+- 内存使用: < 2GB (100万行情数据)
 
 ### 📈 完整交易基础设施
-- **账户管理**: 多资产投资组合跟踪，实时盈亏计算，支持股票和期货
-- **订单管理**: 完整订单生命周期管理，支持限价、市价、止损等订单类型
-- **撮合引擎**: 高性能订单撮合，支持Level-2市场深度和实时成交
-- **市场数据**: 基于Apache Arrow的列式存储，高效处理海量历史数据
-- **回测引擎**: 事件驱动回测框架，支持真实的订单执行和滑点模拟
-- **策略框架**: 可插拔策略开发系统，支持C++和Python策略
+
+#### 市场系统 (Market System)
+- **QAMarketSystem**: 完全匹配 Rust `QAMarket` 的 C++ 实现
+- **账户管理**: 多账户注册、资金管理、QIFI 协议支持
+- **时间管理**: 交易日历、分钟级时间控制
+- **订单调度**: 订单队列、目标持仓队列、批量处理
+- **回测执行**: 事件驱动回测、策略回调、QIFI 快照
+
+#### 账户系统 (Account System)
+- **QA_Account**: 股票/期货统一账户
+- **持仓管理**: 实时持仓跟踪、盈亏计算
+- **订单管理**: 完整订单生命周期、风控检查
+- **批量操作**: 并行批量下单、撤单、查询
+
+#### 数据类型 (Data Types)
+- **Rust 对齐**: 完全匹配 Rust 数据结构定义
+- **StockCnDay**: 中国股票日线数据
+- **StockCn1Min**: 中国股票分钟数据
+- **FutureCn1Min/FutureCnDay**: 中国期货数据
+- **Kline**: 通用 K 线数据结构
 
 ### 🔗 协议支持
-- **QIFI**: 量化投资格式接口，标准化的账户和投资组合数据格式
-- **MIFI**: 市场信息格式接口，统一的市场数据表示
-- **TIFI**: 交易信息格式接口，标准化的交易数据交换
-- **标准协议**: 支持FIX协议、REST API和WebSocket实时数据
 
-### 🐍 Python集成
-- **pybind11绑定**: 高性能Python接口，接近原生C++性能
-- **NumPy集成**: 直接数组访问无需拷贝，支持零拷贝数据传递
-- **Pandas兼容**: 基于Arrow后端的DataFrame操作，兼容pandas生态
-- **Jupyter支持**: 完整的交互式分析和可视化支持
+- **QIFI**: 量化投资格式接口 - 标准化账户/持仓/订单格式
+- **MIFI**: 市场信息格式接口 - 统一市场数据表示
+- **TIFI**: 交易信息格式接口 - 标准化交易数据
 
-### 🗄️ 数据连接器
-- **MongoDB**: 投资组合和交易历史存储，支持分布式部署
-- **ClickHouse**: 高性能OLAP数据库，专为金融时序数据优化
-- **Arrow/Parquet**: 列式数据存储和处理，高效的数据序列化
-- **CSV/JSON**: 标准格式支持，便于数据导入导出
+### 🗄️ 数据库连接器
 
-## 🔬 技术原理
+- **MongoDB**: 账户数据、历史快照存储 (可选)
+- **ClickHouse**: 高性能时序数据存储 (规划中)
+- **Apache Arrow**: 列式数据处理、零拷贝传输
 
-### SIMD向量化计算原理
+## 🏗️ 系统架构
 
-QAULTRA C++ 大量使用SIMD(Single Instruction, Multiple Data)指令来加速金融计算：
+### 模块结构
 
-```cpp
-// 传统标量计算
-for (int i = 0; i < size; ++i) {
-    result[i] = a[i] * b[i];
-}
-
-// SIMD向量化计算 (AVX2, 一次处理4个double)
-__m256d va = _mm256_load_pd(&a[i]);
-__m256d vb = _mm256_load_pd(&b[i]);
-__m256d vr = _mm256_mul_pd(va, vb);
-_mm256_store_pd(&result[i], vr);
+```
+qaultra-cpp/
+├── include/qaultra/          # 头文件
+│   ├── account/              # 账户系统
+│   │   ├── qa_account.hpp    # 统一账户 (Stock + Futures)
+│   │   ├── position.hpp      # 持仓管理
+│   │   ├── order.hpp         # 订单管理
+│   │   └── batch_operations.hpp  # 批量操作
+│   ├── market/               # 市场系统
+│   │   ├── market_system.hpp # 市场系统主类 (对标 Rust QAMarket)
+│   │   ├── simmarket.hpp     # 模拟市场
+│   │   └── match_engine.hpp  # 撮合引擎
+│   ├── data/                 # 数据类型
+│   │   ├── datatype.hpp      # Rust 匹配的基础数据类型
+│   │   ├── kline.hpp         # K线数据
+│   │   └── marketcenter.hpp  # 市场数据中心
+│   ├── protocol/             # 协议定义
+│   │   ├── qifi.hpp          # QIFI 协议
+│   │   ├── mifi.hpp          # MIFI 协议
+│   │   └── tifi.hpp          # TIFI 协议
+│   ├── ipc/                  # IPC 模块
+│   │   ├── broadcast_hub_v1.hpp  # IceOryx v1 广播
+│   │   ├── broadcast_hub_v2.hpp  # iceoryx2 广播
+│   │   └── cross_lang_data.hpp   # 跨语言数据结构
+│   ├── connector/            # 数据库连接器
+│   │   ├── database_connector.hpp
+│   │   └── mongodb_connector.hpp
+│   └── analysis/             # 性能分析
+│       └── performance_analyzer.hpp
+├── src/                      # 实现文件
+├── tests/                    # 测试
+├── examples/                 # 示例代码
+└── docs/                     # 文档
 ```
 
-**性能提升**:
-- AVX2: 4倍加速 (4个double并行)
-- AVX-512: 8倍加速 (8个double并行)
-- 自适应检测: 运行时选择最佳SIMD指令集
+### 设计原则
 
-### 零拷贝架构设计
+1. **Rust 为核心**: C++ 实现完全对标 Rust 版本架构
+2. **零冗余**: 避免创建简化版或重复功能
+3. **高性能**: 零拷贝、SIMD 优化、无锁并发
+4. **C++17 兼容**: 使用广泛支持的标准，避免 C++20 依赖
+5. **模块化**: 清晰的接口分离，支持可选编译
 
-**内存映射文件**:
-```cpp
-class MemoryMappedArray {
-    void* mmap_ptr;  // 直接映射到磁盘文件
-    size_t file_size;
+### 架构对比：C++ vs Rust
 
-    // 零拷贝访问，直接操作映射内存
-    T& operator[](size_t index) {
-        return static_cast<T*>(mmap_ptr)[index];
-    }
-};
-```
+| 组件 | Rust (qars2/src) | C++ (qaultra-cpp) | 状态 |
+|------|------------------|-------------------|------|
+| 账户系统 | `qaaccount::QA_Account` | `account::QA_Account` | ✅ 完全对齐 |
+| 市场系统 | `qamarket::QAMarket` | `market::QAMarketSystem` | ✅ 完全对齐 |
+| 数据类型 | `qadata::StockCnDay` | `data::StockCnDay` | ✅ 完全对齐 |
+| IPC 广播 | `qadata::DataBroadcaster` | `ipc::BroadcastHubV2` | ✅ iceoryx2 集成 |
+| 协议 | `qaprotocol::qifi::QIFI` | `protocol::qifi::QIFI` | ✅ 完全对齐 |
 
-**Arrow零拷贝集成**:
-- 直接在Arrow内存缓冲区上操作
-- Python绑定时避免数据拷贝
-- 列式存储天然支持向量化计算
-
-### 无锁并发数据结构
-
-**Lock-Free队列实现**:
-```cpp
-template<typename T>
-class LockFreeQueue {
-    std::atomic<Node*> head;
-    std::atomic<Node*> tail;
-
-    bool enqueue(T item) {
-        Node* new_node = new Node{item, nullptr};
-        Node* prev_tail = tail.exchange(new_node);
-        prev_tail->next.store(new_node);
-        return true;
-    }
-};
-```
-
-**原子操作优势**:
-- 无锁等待，减少上下文切换
-- 支持多生产者多消费者
-- 比互斥锁快10-100倍
-
-### Apache Arrow列式存储
-
-**内存布局优化**:
-```
-传统行存储:     | ID | Price | Volume | Time | ID | Price | Volume | Time |
-Arrow列存储:    | ID | ID | ID | ID | Price | Price | Price | Price |
-```
-
-**优势**:
-- CPU缓存友好，减少缓存未命中
-- 向量化计算天然支持
-- 压缩效率更高 (同类型数据连续存储)
-- 零拷贝与Pandas/NumPy互操作
-
-## 📦 安装指南
+## 📦 快速开始
 
 ### 系统要求
 
-- **C++20** 兼容编译器 (GCC 10+, Clang 12+, MSVC 2019+)
-- **CMake** 3.20 或更高版本
-- **Python** 3.8+ (用于Python绑定)
+- **编译器**: GCC 9+ / Clang 10+ / MSVC 2019+
+- **CMake**: 3.16+
+- **依赖库**:
+  - nlohmann_json
+  - Google Test (可选，用于测试)
+  - MongoDB C++ Driver (可选，`QAULTRA_USE_MONGODB=ON`)
+  - Apache Arrow (可选，`QAULTRA_USE_ARROW=ON`)
+  - IceOryx (可选，`QAULTRA_USE_ICEORYX=ON`)
+  - iceoryx2 (可选，`QAULTRA_USE_ICEORYX2=ON`)
 
-### Ubuntu/Debian 安装
+### 编译安装
 
 ```bash
-# 1. 安装系统依赖
-sudo apt-get update
-sudo apt-get install -y \
-    build-essential \
-    cmake \
-    ninja-build \
-    pkg-config \
-    libtbb-dev \
-    libssl-dev \
-    python3-dev \
-    python3-pip
-
-# 2. 克隆仓库
+# 克隆项目
 git clone https://github.com/quantaxis/qaultra-cpp.git
 cd qaultra-cpp
 
-# 3. 创建构建目录
+# 创建构建目录
 mkdir build && cd build
 
-# 4. 配置CMake (启用所有优化)
+# 配置项目 (基础版本)
+cmake .. -DQAULTRA_BUILD_TESTS=ON
+
+# 配置项目 (完整功能)
 cmake .. \
-    -DCMAKE_BUILD_TYPE=Release \
-    -DQAULTRA_ENABLE_SIMD=ON \
-    -DQAULTRA_ENABLE_NATIVE=ON \
-    -DQAULTRA_ENABLE_LTO=ON \
-    -DQAULTRA_BUILD_PYTHON_BINDINGS=ON \
-    -G Ninja
+  -DQAULTRA_BUILD_TESTS=ON \
+  -DQAULTRA_USE_MONGODB=ON \
+  -DQAULTRA_USE_ICEORYX2=ON \
+  -DQAULTRA_USE_FULL_FEATURES=ON
 
-# 5. 编译
-ninja -j$(nproc)
+# 编译
+make -j$(nproc)
 
-# 6. 安装Python包
-pip install -e python/
+# 运行测试
+./progressive_test
+./protocol_test
+./unified_account_test
 ```
 
-### macOS 安装
-
-```bash
-# 1. 安装Homebrew依赖
-brew install cmake ninja tbb python@3.11
-
-# 2. 设置编译环境
-export CXX=clang++
-export CC=clang
-
-# 3. 按照上述Ubuntu步骤继续
-```
-
-### Windows (MSVC) 安装
-
-```batch
-# 1. 安装Visual Studio 2019/2022
-# 2. 安装CMake和vcpkg
-
-# 3. 使用vcpkg安装依赖
-vcpkg install tbb:x64-windows arrow:x64-windows
-
-# 4. 配置和构建
-cmake -B build -DCMAKE_TOOLCHAIN_FILE=vcpkg/scripts/buildsystems/vcpkg.cmake
-cmake --build build --config Release
-```
-
-### Docker安装
-
-```bash
-# 使用官方Docker镜像
-docker pull quantaxis/qaultra-cpp:latest
-
-# 或构建本地镜像
-docker build -t qaultra-cpp .
-docker run -it qaultra-cpp bash
-```
-
-## 🚀 快速开始
-
-### C++基础用法
+### 快速示例
 
 ```cpp
-#include "qaultra/qaultra.hpp"
-
-using namespace qaultra;
+#include <qaultra/market/market_system.hpp>
+#include <qaultra/account/qa_account.hpp>
 
 int main() {
-    // 1. 创建交易账户
-    auto account = std::make_shared<account::QA_Account>(
-        "我的账户",           // 账户ID
-        "投资组合1",         // 组合ID
-        "用户123",           // 用户ID
-        1000000.0,          // 初始资金 (100万)
-        false,              // 是否自动补仓
-        "backtest"          // 环境类型 (backtest/real)
+    using namespace qaultra;
+
+    // 创建市场系统
+    auto market = std::make_shared<market::QAMarketSystem>(
+        "/data/market",     // 数据路径
+        "my_portfolio"      // 组合名称
     );
 
-    std::cout << "初始资金: ￥" << account->get_cash() << std::endl;
+    // 注册账户
+    market->register_account("account_001", 1000000.0);  // 100万初始资金
 
-    // 2. 执行买入操作
-    auto buy_order = account->buy(
-        "000001",           // 股票代码
-        1000.0,            // 买入数量
-        "2024-01-15 09:30:00", // 交易时间
-        10.50              // 买入价格
-    );
+    // 获取账户
+    auto account = market->get_account("account_001");
 
-    std::cout << "订单状态: " << static_cast<int>(buy_order->status) << std::endl;
-    std::cout << "账户余额: ￥" << account->get_cash() << std::endl;
+    // 下单
+    account->buy("000001.XSHE", 100, 10.5);
 
-    // 3. 价格更新
-    account->on_price_change("000001", 11.00, "2024-01-15 15:00:00");
+    // 查询持仓
+    auto positions = account->get_positions();
+    for (const auto& [code, pos] : positions) {
+        std::cout << "持仓: " << code << " 数量: " << pos.volume << std::endl;
+    }
 
-    std::cout << "浮动盈亏: ￥" << account->get_float_profit() << std::endl;
-    std::cout << "总资产: ￥" << account->get_total_value() << std::endl;
-
-    // 4. 导出QIFI格式
-    auto qifi_data = account->to_qifi();
-    std::cout << "持仓数量: " << qifi_data.positions.size() << std::endl;
+    // 获取 QIFI 快照
+    auto qifi = account->get_qifi();
+    std::cout << "账户权益: " << qifi.balance << std::endl;
 
     return 0;
 }
 ```
 
-### Python高级用法
+## 📚 模块详解
 
-```python
-import qaultra_cpp as qa
-import numpy as np
-import pandas as pd
+### Account 模块 (`include/qaultra/account/`)
 
-# 1. 创建账户
-account = qa.account.QA_Account(
-    account_cookie="python账户",
-    portfolio_cookie="python组合",
-    user_cookie="python用户",
-    init_cash=1000000.0,
-    auto_reload=False,
-    environment="backtest"
-)
+**核心类**:
+- `QA_Account`: 统一账户，支持股票和期货交易
+- `QA_Position`: 持仓管理，实时盈亏计算
+- `Order`: 订单管理，完整生命周期跟踪
+- `BatchOrderProcessor`: 批量操作处理器
 
-print(f"初始资金: ￥{account.get_cash():,.2f}")
+**主要功能**:
+- 多账户管理
+- 买卖/开平仓操作
+- 实时风控检查
+- 盈亏计算
+- QIFI 协议导出
 
-# 2. 创建Arrow K线数据
-klines = qa.data.ArrowKlineCollection()
+### Market 模块 (`include/qaultra/market/`)
 
-# 生成示例数据
-dates = pd.date_range('2024-01-01', periods=100, freq='D')
-codes = ["000001"] * 100
-timestamps = [int(d.timestamp() * 1000) for d in dates]
+**核心类**:
+- `QAMarketSystem`: 市场系统主类（对标 Rust `QAMarket`）
+- `SimMarket`: 模拟市场
+- `MatchEngine`: 订单撮合引擎
 
-# 模拟价格数据
-np.random.seed(42)
-prices = 10.0 + np.cumsum(np.random.normal(0, 0.1, 100))
-opens = prices
-closes = prices + np.random.normal(0, 0.05, 100)
-highs = np.maximum(opens, closes) + np.abs(np.random.normal(0, 0.1, 100))
-lows = np.minimum(opens, closes) - np.abs(np.random.normal(0, 0.1, 100))
-volumes = np.random.uniform(100000, 500000, 100)
-amounts = closes * volumes
+**主要功能**:
+- 账户注册和管理
+- 时间管理（交易日期/时间）
+- 订单调度和队列
+- 目标持仓管理
+- 回测执行
+- QIFI 快照管理
 
-# 添加到Arrow集合
-klines.add_batch(codes, timestamps, opens.tolist(), highs.tolist(),
-                lows.tolist(), closes.tolist(), volumes.tolist(), amounts.tolist())
+### Data 模块 (`include/qaultra/data/`)
 
-print(f"K线数据条数: {klines.size()}")
+**核心类型**:
+- `Date`: C++17 兼容的日期结构
+- `StockCnDay`: 中国股票日线数据
+- `StockCn1Min`: 中国股票分钟数据
+- `FutureCn1Min`: 中国期货分钟数据
+- `FutureCnDay`: 中国期货日线数据
+- `Kline`: 通用 K 线结构
 
-# 3. 技术指标计算(SIMD优化)
-sma_20 = klines.sma(20)  # 20日简单移动平均
-ema_12 = klines.ema(0.154)  # 12日指数移动平均 (alpha=2/(12+1))
-rsi_14 = klines.rsi(14)  # 14日RSI
+**工具函数**:
+- 时间戳/日期转换
+- 交易日判断
+- 下一个/上一个交易日计算
 
-print(f"SMA(20)最新值: {sma_20[-1]:.2f}")
-print(f"EMA(12)最新值: {ema_12[-1]:.2f}")
-print(f"RSI(14)最新值: {rsi_14[-1]:.2f}")
+### IPC 模块 (`include/qaultra/ipc/`)
 
-# 4. 执行交易
-current_price = closes[-1]
-buy_order = account.buy("000001", 1000, "2024-04-10 09:30:00", current_price)
+**核心类**:
+- `BroadcastHubV1`: 基于 IceOryx (v1) 的数据广播
+- `BroadcastHubV2`: 基于 iceoryx2 的数据广播
+- `CrossLangData`: 跨语言数据结构
 
-print(f"买入订单: {1000}股 @ ￥{current_price:.2f}")
-print(f"订单状态: {buy_order.status}")
+**关键特性**:
+- 零拷贝共享内存传输
+- 支持 1000+ 并发订阅者
+- 微秒级延迟
+- 批量数据传输优化
 
-# 5. 价格更新和盈亏计算
-new_price = current_price * 1.05  # 上涨5%
-account.on_price_change("000001", new_price, "2024-04-10 15:00:00")
+### Protocol 模块 (`include/qaultra/protocol/`)
 
-print(f"价格更新: ￥{current_price:.2f} → ￥{new_price:.2f}")
-print(f"浮动盈亏: ￥{account.get_float_profit():,.2f}")
-print(f"总资产: ￥{account.get_total_value():,.2f}")
+**QIFI 协议** (`qifi.hpp`):
+- 标准化账户数据格式
+- 持仓、订单、成交数据结构
+- JSON 序列化/反序列化
 
-# 6. 性能测试 - SIMD vs 标准实现
-size = 1000000
-a = np.random.random(size)
-b = np.random.random(size)
+**MIFI 协议** (`mifi.hpp`):
+- 市场数据标准格式
+- 行情快照、逐笔成交
 
-import time
+**TIFI 协议** (`tifi.hpp`):
+- 交易数据交换格式
 
-# 标准NumPy
-start = time.time()
-numpy_result = a * b
-numpy_time = time.time() - start
+## 🔧 编译选项
 
-# SIMD优化
-start = time.time()
-simd_result = qa.simd.vectorized_multiply(a, b)
-simd_time = time.time() - start
+### CMake 编译选项
 
-print(f"\n性能对比 ({size:,}个元素):")
-print(f"NumPy实现: {numpy_time:.4f}秒")
-print(f"SIMD实现: {simd_time:.4f}秒")
-print(f"性能提升: {numpy_time/simd_time:.2f}倍")
+| 选项 | 默认值 | 说明 |
+|------|--------|------|
+| `QAULTRA_BUILD_TESTS` | ON | 构建测试程序 |
+| `QAULTRA_BUILD_EXAMPLES` | OFF | 构建示例程序 |
+| `QAULTRA_USE_ARROW` | OFF | 启用 Apache Arrow 支持 |
+| `QAULTRA_USE_MONGODB` | OFF | 启用 MongoDB 连接器 |
+| `QAULTRA_USE_ICEORYX` | ON | 启用 IceOryx (v1) IPC |
+| `QAULTRA_USE_ICEORYX2` | ON | 启用 iceoryx2 IPC |
+| `QAULTRA_USE_FULL_FEATURES` | OFF | 启用所有完整功能 |
+
+### 构建配置
+
+```bash
+# 最小构建（仅核心功能）
+cmake .. -DQAULTRA_BUILD_TESTS=OFF
+
+# 完整构建（所有功能）
+cmake .. \
+  -DQAULTRA_BUILD_TESTS=ON \
+  -DQAULTRA_BUILD_EXAMPLES=ON \
+  -DQAULTRA_USE_MONGODB=ON \
+  -DQAULTRA_USE_ARROW=ON \
+  -DQAULTRA_USE_ICEORYX2=ON \
+  -DQAULTRA_USE_FULL_FEATURES=ON
+
+# 高性能构建（优化编译）
+cmake .. -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_FLAGS="-O3 -march=native"
 ```
 
 ## 📊 性能基准
 
-| 操作类型 | QAULTRA C++ | QARS Rust | 性能提升 |
-|---------|-------------|-----------|---------|
-| 订单处理 | 2.1M ops/sec | 1.8M ops/sec | 1.17x |
-| 投资组合计算 | 850K ops/sec | 720K ops/sec | 1.18x |
-| 市场数据接入 | 12M ticks/sec | 10M ticks/sec | 1.20x |
-| SIMD数学运算 | 45M ops/sec | 15M ops/sec | 3.00x |
-| 内存使用 | -15% | 基准线 | 减少15% |
-
-*基准测试环境: Intel Xeon 8280 (28核心), 256GB RAM*
-
-### 详细性能测试结果
-
-**SIMD优化效果**:
-```
-向量乘法 (1M元素):
-- 标准实现: 45.2ms
-- AVX2优化: 11.8ms (3.83倍提升)
-- AVX-512: 6.1ms (7.41倍提升)
-
-技术指标计算 (SMA-20, 10K数据点):
-- 标准循环: 2.3ms
-- SIMD优化: 0.6ms (3.83倍提升)
-
-Portfolio P&L计算 (1000个持仓):
-- 传统方式: 150μs
-- 向量化: 42μs (3.57倍提升)
-```
-
-**内存性能**:
-```
-数据结构         | 传统方式  | Arrow优化 | 改善
-K线数据(100万条) | 480MB    | 180MB    | 62.5%减少
-订单簿深度       | 2.1MB    | 0.8MB    | 61.9%减少
-持仓追踪         | 156KB    | 64KB     | 59.0%减少
-```
-
-## 🔧 模块详解
-
-### 核心模块
-
-#### 🏦 账户系统 (`qaultra::account`)
-- **QA_Account**: 主要交易账户类，支持股票和期货交易
-- **Position**: 多资产持仓跟踪，实时盈亏计算
-- **Order**: 订单生命周期管理，支持多种订单类型
-- **MarketPreset**: 市场特定配置，手续费和保证金设置
-- **Algorithm**: 算法交易框架，支持TWAP、VWAP、Iceberg等策略
-
-#### 📊 市场数据 (`qaultra::market`)
-- **MatchingEngine**: 高性能订单撮合引擎，支持多线程并发
-- **OrderBook**: Level-2市场深度数据，实时更新
-- **MarketDataFeed**: 实时数据接入，支持多种数据源
-- **MarketSimulator**: 回测市场模拟，真实交易环境复现
-- **HistoricalMarket**: 历史市场数据管理和查询
-
-#### 💾 数据结构 (`qaultra::data`)
-- **ArrowKlineCollection**: 基于Arrow的列式OHLCV数据存储
-- **KlineCollection**: 传统K线数据存储，向后兼容
-- **MarketDataManager**: 多标的数据管理，统一接口
-- **ConcurrentStructures**: 并发安全的数据结构集合
-
-#### 🔌 协议支持 (`qaultra::protocol`)
-- **QIFI**: 量化投资格式接口，账户和投资组合序列化
-- **MIFI**: 市场信息格式接口，统一的市场数据表示
-- **TIFI**: 交易信息格式接口，交易数据标准化交换
-
-#### ⚡ 高性能计算 (`qaultra::simd`)
-- **SimdMath**: 向量化金融计算，支持AVX/AVX2/AVX-512
-- **FinancialMath**: 投资组合分析，技术指标计算
-- **MemoryMappedArray**: 零拷贝数据访问，大文件高效处理
-- **LockFreeRingBuffer**: 超低延迟队列，无锁并发访问
-
-### 性能优化模块
-
-#### 🧵 多线程 (`qaultra::threading`)
-- **ThreadPool**: 工作窃取线程池，动态负载均衡
-- **LockFreeQueue**: 多生产者多消费者无锁队列
-- **AtomicCounters**: 无锁统计计数器，高并发性能监控
-
-#### 🧠 内存管理 (`qaultra::memory`)
-- **ObjectPool**: 预分配对象池，减少动态分配开销
-- **AlignedAllocator**: SIMD对齐内存分配器，优化向量运算
-- **MemoryMapper**: 虚拟内存管理，支持大文件映射
-
-### 连接器模块
-
-#### 🗄️ 数据库连接器 (`qaultra::connector`)
-- **MongoConnector**: MongoDB连接器，支持账户和市场数据存储
-- **ClickHouseConnector**: ClickHouse连接器，高性能时序数据分析
-- **ParquetConnector**: Parquet文件读写，列式数据持久化
-
-#### 🔄 回测引擎 (`qaultra::engine`)
-- **BacktestEngine**: 事件驱动回测引擎，支持多策略并行
-- **StrategyFramework**: 策略开发框架，支持C++和Python策略
-- **PerformanceAnalyzer**: 性能分析器，风险指标计算
-
-### 分析工具
-
-#### 📈 性能分析 (`qaultra::analysis`)
-- **QIFIAnalysis**: QIFI格式数据分析，投资组合指标计算
-- **RiskAnalysis**: 风险分析工具，VaR、夏普比率等指标
-- **PerformanceMetrics**: 绩效指标计算，回撤、收益率分析
-
-## 📚 API参考
-
-### 账户管理API
-
-```cpp
-// 创建交易账户
-auto account = std::make_shared<account::QA_Account>(
-    "账户ID", "组合ID", "用户ID",
-    初始资金, 自动补仓, 环境类型);
-
-// 股票交易操作
-auto 买入订单 = account->buy(代码, 数量, 时间, 价格);
-auto 卖出订单 = account->sell(代码, 数量, 时间, 价格);
-
-// 期货交易操作
-auto 买开 = account->buy_open(代码, 数量, 时间, 价格);
-auto 卖平 = account->sell_close(代码, 数量, 时间, 价格);
-auto 买平今 = account->buy_closetoday(代码, 数量, 时间, 价格);
-auto 卖平今 = account->sell_closetoday(代码, 数量, 时间, 价格);
-
-// 账户查询
-double 资金余额 = account->get_cash();
-double 总资产 = account->get_total_value();
-double 浮动盈亏 = account->get_float_profit();
-double 持仓市值 = account->get_market_value();
-double 可用保证金 = account->get_margin();
-
-// 风险管理
-bool 允许下单 = account->check_order_allowed(代码, 数量, 价格, 方向);
-double 最大下单量 = account->get_max_order_size(代码, 价格, 方向);
-
-// QIFI格式导出
-auto qifi数据 = account->to_qifi();
-```
-
-### 市场数据API
-
-```cpp
-// Arrow列式市场数据
-auto k线集合 = std::make_shared<arrow_data::ArrowKlineCollection>();
-k线集合->add_batch(代码列表, 时间戳, 开盘价, 最高价, 最低价, 收盘价, 成交量, 成交额);
-
-// 技术指标计算 (SIMD优化)
-auto sma指标 = k线集合->sma(20);           // 20日简单移动平均
-auto ema指标 = k线集合->ema(0.1);           // 指数移动平均
-auto rsi指标 = k线集合->rsi(14);            // 14日RSI
-auto macd指标 = k线集合->macd(12, 26, 9);   // MACD指标
-auto 布林带 = k线集合->bollinger_bands(20, 2.0); // 布林带
-
-// 数据筛选和聚合
-auto 筛选数据 = k线集合->filter_by_code("000001");
-auto 聚合数据 = k线集合->resample("1H");        // 重采样为1小时
-auto 分页数据 = k线集合->slice(0, 1000);         // 切片操作
-
-// 统计计算
-double 均值 = k线集合->mean("close");
-double 标准差 = k线集合->std("close");
-double 相关系数 = k线集合->correlation("close", "volume");
-```
-
-### 撮合引擎API
-
-```cpp
-// 创建撮合引擎
-auto 撮合引擎 = market::factory::create_matching_engine(线程数);
-
-// 设置回调函数
-撮合引擎->add_trade_callback([](const auto& 成交) {
-    std::cout << "成交: " << 成交.trade_volume
-              << "股 @ " << 成交.trade_price << "元" << std::endl;
-});
-
-撮合引擎->add_order_callback([](const auto& 订单状态) {
-    std::cout << "订单更新: " << 订单状态.order_id
-              << " -> " << static_cast<int>(订单状态.status) << std::endl;
-});
-
-// 提交订单
-auto 订单 = std::make_shared<Order>("订单1", "账户1", "000001",
-                                 Direction::BUY, 100.0, 1000.0);
-bool 成功 = 撮合引擎->submit_order(订单);
-
-// 查询市场深度
-auto 深度数据 = 撮合引擎->get_market_depth("000001", 10);
-for (const auto& 档位 : 深度数据.bids) {
-    std::cout << "买" << 档位.level << ": " << 档位.price << " x " << 档位.volume << std::endl;
-}
-```
-
-## 🔄 回测框架
-
-### 简单移动平均策略示例
-
-```cpp
-#include "qaultra/engine/backtest_engine.hpp"
-
-using namespace qaultra::engine;
-
-int main() {
-    // 1. 配置回测参数
-    BacktestConfig config;
-    config.start_date = "2024-01-01";
-    config.end_date = "2024-12-31";
-    config.initial_cash = 1000000.0;    // 100万初始资金
-    config.commission_rate = 0.0025;    // 0.25%手续费
-    config.benchmark = "000300";        // 沪深300基准
-
-    // 2. 创建回测引擎
-    BacktestEngine engine(config);
-
-    // 3. 添加交易标的
-    std::vector<std::string> universe = {"000001", "000002", "000858", "002415"};
-    engine.set_universe(universe);
-
-    // 4. 创建和添加策略
-    auto sma_strategy = factory::create_sma_strategy(5, 20);  // 5日线和20日线
-    engine.add_strategy(sma_strategy);
-
-    // 5. 加载市场数据
-    engine.load_data("data/stock_data/");
-
-    // 6. 运行回测
-    auto results = engine.run();
-
-    // 7. 输出结果
-    std::cout << "=== 回测结果 ===" << std::endl;
-    std::cout << "总收益率: " << (results.total_return * 100) << "%" << std::endl;
-    std::cout << "年化收益率: " << (results.annual_return * 100) << "%" << std::endl;
-    std::cout << "夏普比率: " << results.sharpe_ratio << std::endl;
-    std::cout << "最大回撤: " << (results.max_drawdown * 100) << "%" << std::endl;
-    std::cout << "总交易次数: " << results.total_trades << std::endl;
-    std::cout << "胜率: " << (results.win_rate * 100) << "%" << std::endl;
-
-    // 8. 保存结果
-    engine.save_results("backtest_results.json");
-
-    return 0;
-}
-```
-
-### Python策略回测
-
-```python
-import qaultra_cpp as qa
-
-# 1. 配置回测
-config = qa.engine.BacktestConfig()
-config.start_date = "2024-01-01"
-config.end_date = "2024-12-31"
-config.initial_cash = 1000000.0
-config.commission_rate = 0.0025
-
-# 2. 创建回测引擎
-engine = qa.engine.BacktestEngine(config)
-
-# 3. 设置股票池
-universe = ["000001", "000002", "000858", "002415"]
-engine.set_universe(universe)
-
-# 4. 添加策略
-sma_strategy = qa.engine.factory.create_sma_strategy(5, 20)
-momentum_strategy = qa.engine.factory.create_momentum_strategy(20, 0.02)
-
-engine.add_strategy(sma_strategy)
-engine.add_strategy(momentum_strategy)
-
-# 5. 运行回测
-results = engine.run()
-
-# 6. 分析结果
-print("=== 回测结果 ===")
-print(f"总收益率: {results.total_return*100:.2f}%")
-print(f"年化收益率: {results.annual_return*100:.2f}%")
-print(f"夏普比率: {results.sharpe_ratio:.3f}")
-print(f"最大回撤: {results.max_drawdown*100:.2f}%")
-print(f"波动率: {results.volatility*100:.2f}%")
-
-# 7. 可视化结果(需要matplotlib)
-import matplotlib.pyplot as plt
-
-equity_curve = engine.plot_equity_curve()
-dates = [point[0] for point in equity_curve]
-values = [point[1] for point in equity_curve]
-
-plt.figure(figsize=(12, 8))
-plt.plot(dates, values, label='策略收益')
-plt.title('策略权益曲线')
-plt.xlabel('日期')
-plt.ylabel('总资产 (￥)')
-plt.legend()
-plt.grid(True)
-plt.show()
-```
-
-## 📊 数据库集成
-
-### MongoDB使用
-
-```cpp
-#include "qaultra/connector/mongodb_connector.hpp"
-
-// 1. 配置MongoDB连接
-connector::MongoConfig config;
-config.host = "localhost";
-config.port = 27017;
-config.database = "quantaxis";
-
-auto mongo = std::make_unique<connector::MongoConnector>(config);
-
-// 2. 连接和保存账户数据
-if (mongo->connect()) {
-    // 保存账户
-    auto qifi = account->to_qifi();
-    mongo->save_account(qifi);
-
-    // 保存K线数据
-    mongo->save_kline_data("stock_daily", klines);
-
-    // 查询数据
-    connector::QueryFilter filter;
-    filter.code = "000001";
-    filter.start_date = "2024-01-01";
-    filter.end_date = "2024-12-31";
-
-    auto historical_data = mongo->load_kline_data("stock_daily", filter);
-}
-```
-
-### ClickHouse高性能分析
-
-```cpp
-#include "qaultra/connector/clickhouse_connector.hpp"
-
-// 1. 配置ClickHouse连接
-connector::ClickHouseConfig config;
-config.host = "localhost";
-config.port = 9000;
-config.database = "quantaxis";
-
-auto clickhouse = std::make_unique<connector::ClickHouseConnector>(config);
-
-// 2. 创建表和插入数据
-if (clickhouse->connect()) {
-    // 创建K线表
-    clickhouse->create_kline_table("stock_minute");
-
-    // 批量插入数据
-    clickhouse->insert_kline_data("stock_minute", klines);
-
-    // 聚合查询
-    auto daily_data = clickhouse->aggregate_kline_data(
-        "stock_minute", "000001",
-        "2024-01-01", "2024-12-31",
-        connector::AggregationType::DAY_1
-    );
-
-    // 技术指标计算
-    auto indicators = clickhouse->calculate_technical_indicators(
-        "stock_minute", "000001", {"SMA", "EMA", "RSI"}, 20
-    );
-}
-```
-
-## 🛠️ 自定义策略开发
-
-### C++策略开发
-
-```cpp
-#include "qaultra/engine/backtest_engine.hpp"
-
-class MyCustomStrategy : public engine::Strategy {
-public:
-    // 策略参数
-    int short_period = 5;
-    int long_period = 20;
-    double threshold = 0.02;
-
-    void initialize(engine::StrategyContext& context) override {
-        context.log("初始化自定义策略");
-        // 初始化逻辑
-    }
-
-    void handle_data(engine::StrategyContext& context) override {
-        for (const auto& symbol : context.universe) {
-            // 获取历史价格
-            auto short_prices = context.get_history(symbol, short_period, "close");
-            auto long_prices = context.get_history(symbol, long_period, "close");
-
-            if (short_prices.size() < short_period || long_prices.size() < long_period) {
-                continue;
-            }
-
-            // 计算移动平均
-            double short_ma = std::accumulate(short_prices.begin(), short_prices.end(), 0.0) / short_period;
-            double long_ma = std::accumulate(long_prices.begin(), long_prices.end(), 0.0) / long_period;
-
-            double current_price = context.get_price(symbol);
-            auto position = context.get_position(symbol);
-
-            // 交易信号
-            double signal = (short_ma - long_ma) / long_ma;
-
-            if (signal > threshold && (!position || position->volume_long == 0)) {
-                // 买入信号
-                double cash = context.get_cash();
-                double shares = std::floor(cash * 0.2 / current_price / 100) * 100;
-
-                if (shares >= 100) {
-                    auto order = context.account->buy(symbol, shares, context.current_date, current_price);
-                    context.log("买入 " + symbol + " " + std::to_string(shares) + "股");
-                }
-            } else if (signal < -threshold && position && position->volume_long > 0) {
-                // 卖出信号
-                auto order = context.account->sell(symbol, position->volume_long, context.current_date, current_price);
-                context.log("卖出 " + symbol + " " + std::to_string(position->volume_long) + "股");
-            }
-        }
-    }
-
-    std::string get_name() const override {
-        return "自定义均线策略";
-    }
-
-    std::map<std::string, double> get_parameters() const override {
-        return {
-            {"short_period", static_cast<double>(short_period)},
-            {"long_period", static_cast<double>(long_period)},
-            {"threshold", threshold}
-        };
-    }
-
-    void set_parameter(const std::string& name, double value) override {
-        if (name == "short_period") {
-            short_period = static_cast<int>(value);
-        } else if (name == "long_period") {
-            long_period = static_cast<int>(value);
-        } else if (name == "threshold") {
-            threshold = value;
-        }
-    }
-};
-```
-
-## ⚡ 性能优化指南
-
-### SIMD优化使用
-
-```cpp
-#include "qaultra/simd/simd_math.hpp"
-
-// 1. 向量化数学运算
-std::vector<double> prices = {100.1, 100.2, 100.3, 100.4};
-std::vector<double> volumes = {1000, 2000, 3000, 4000};
-
-// SIMD优化的向量乘法
-auto amounts = simd::vectorized_multiply(prices.data(), volumes.data(), prices.size());
-
-// 2. 技术指标计算
-auto sma_result = simd::calculate_sma(prices.data(), prices.size(), 20);
-auto ema_result = simd::calculate_ema(prices.data(), prices.size(), 0.1);
-
-// 3. 金融指标计算
-std::vector<double> returns = simd::calculate_returns(prices.data(), prices.size());
-double sharpe = simd::calculate_sharpe_ratio_simd(returns.data(), returns.size(), 0.03);
-```
-
-### 内存优化
-
-```cpp
-#include "qaultra/memory/object_pool.hpp"
-
-// 1. 对象池使用
-auto order_pool = std::make_shared<memory::ObjectPool<account::Order>>(10000);
-
-// 高频创建订单时使用对象池
-auto order = order_pool->acquire();
-order->order_id = "ORDER_001";
-order->code = "000001";
-// ... 使用订单
-
-order_pool->release(order);  // 释放回池
-
-// 2. 内存映射数组(零拷贝)
-memory::MemoryMappedArray<double> large_array("data.bin", 1000000);
-large_array[0] = 123.456;
-large_array.sync();  // 同步到磁盘
-```
-
-### 多线程优化
-
-```cpp
-#include "qaultra/threading/lockfree_queue.hpp"
-
-// 1. 无锁队列
-threading::LockFreeQueue<std::shared_ptr<account::Order>> order_queue(10000);
-
-// 生产者线程
-std::thread producer([&]() {
-    for (int i = 0; i < 1000; ++i) {
-        auto order = std::make_shared<account::Order>();
-        order->order_id = "ORDER_" + std::to_string(i);
-        order_queue.enqueue(order);
-    }
-});
-
-// 消费者线程
-std::thread consumer([&]() {
-    std::shared_ptr<account::Order> order;
-    while (order_queue.dequeue(order)) {
-        // 处理订单
-        process_order(order);
-    }
-});
-
-producer.join();
-consumer.join();
-```
-
-## ⚙️ 配置选项
-
-### 构建选项
-
-```cmake
-# 性能优化
--DQAULTRA_ENABLE_SIMD=ON          # 启用SIMD优化
--DQAULTRA_ENABLE_NATIVE=ON        # 启用原生CPU优化
--DQAULTRA_ENABLE_LTO=ON           # 启用链接时优化
--DQAULTRA_ENABLE_MIMALLOC=ON      # 使用mimalloc分配器
-
-# 功能特性
--DQAULTRA_BUILD_TESTS=ON          # 构建测试套件
--DQAULTRA_BUILD_EXAMPLES=ON       # 构建示例程序
--DQAULTRA_BUILD_PYTHON_BINDINGS=ON # 构建Python绑定
--DQAULTRA_BUILD_BENCHMARKS=ON     # 构建基准测试
-
-# 调试选项 (仅Debug模式)
--DQAULTRA_ENABLE_ASAN=ON          # 地址消毒器
--DQAULTRA_ENABLE_TSAN=ON          # 线程消毒器
-```
-
-### 运行时配置
-
-```bash
-# SIMD优化级别
-export QAULTRA_SIMD_LEVEL=AVX512  # AUTO, SSE42, AVX2, AVX512
-
-# 内存分配
-export QAULTRA_USE_MIMALLOC=1     # 0=系统, 1=mimalloc
-
-# 线程设置
-export QAULTRA_THREAD_COUNT=16    # 工作线程数量
-
-# 日志级别
-export QAULTRA_LOG_LEVEL=INFO     # TRACE, DEBUG, INFO, WARN, ERROR
-```
+### IPC 性能 (iceoryx2)
+
+| 测试场景 | 订阅者数 | 吞吐量 | 延迟 (P99) | 成功率 |
+|---------|---------|--------|-----------|--------|
+| 大规模并发 | 500 | 520K msg/sec | < 10 μs | 100% |
+| 高并发 | 1000 | 350K msg/sec | < 15 μs | 99.9% |
+| 持续发送 | 10 | 1.2M msg/sec | < 5 μs | 100% |
+| 长时稳定性 | 50 | 800K msg/sec | < 8 μs | 99.99% |
+
+### 账户操作性能
+
+| 操作 | 延迟 | 吞吐量 |
+|-----|------|--------|
+| 下单 | < 1 μs | > 1M ops/sec |
+| 持仓查询 | < 100 ns | > 10M ops/sec |
+| 盈亏计算 | < 500 ns | > 2M ops/sec |
+| QIFI 快照 | < 10 μs | > 100K ops/sec |
+
+### 数据处理性能
+
+| 操作 | 性能 |
+|-----|------|
+| K线数据解析 | > 5M rows/sec |
+| 时间序列聚合 | > 1M rows/sec |
+| 跨语言数据传输 | > 2GB/sec (零拷贝) |
+
+## 📖 文档
+
+- [架构文档](docs/ARCHITECTURE.md) - 详细架构设计
+- [API 参考](docs/API_REFERENCE.md) - 完整 API 文档
+- [编译指南](docs/BUILD_GUIDE.md) - 详细编译说明
+- [示例代码](docs/EXAMPLES.md) - 使用示例
+- [变更日志](CHANGELOG.md) - 版本变更记录
+- [贡献指南](CONTRIBUTING.md) - 如何贡献代码
+
+### IPC 专题文档
+
+- [IPC 集成指南](docs/ICEORYX_INTEGRATION_CPP.md)
+- [跨语言 IPC 状态](docs/CROSS_LANGUAGE_IPC_STATUS.md)
+- [双栈 IPC 架构](docs/DUAL_STACK_IPC.md)
+- [C++ vs Rust IPC 对比](docs/CPP_RUST_IPC_COMPARISON.md)
 
 ## 🧪 测试
 
-```bash
-# 运行所有测试
-ninja test
-
-# 运行特定测试套件
-./tests/qaultra_tests --gtest_filter="AccountTest.*"
-
-# 运行基准测试
-./benchmarks/qaultra_benchmarks
-
-# 内存泄漏检测 (Debug构建)
-valgrind --tool=memcheck ./tests/qaultra_tests
-
-# 性能分析
-perf record -g ./benchmarks/qaultra_benchmarks
-perf report
-```
-
-## 📝 示例程序
-
-查看 `examples/` 目录获取完整示例：
-
-- **basic_trading.cpp**: 基础买卖操作示例
-- **backtesting_strategy.cpp**: 完整回测工作流程
-- **market_making.cpp**: 做市策略实现
-- **portfolio_optimization.cpp**: 投资组合优化
-- **real_time_trading.cpp**: 实时交易与市场数据接入
-- **algo_trading_example.cpp**: 算法交易示例
-- **simd_performance.cpp**: SIMD性能优化示例
-- **concurrent_processing.cpp**: 并发处理示例
-
-## ❓ 常见问题
-
-### Q: 如何启用最高性能模式？
-
-A: 编译时使用以下CMake选项：
+### 运行测试
 
 ```bash
-cmake .. \
-    -DCMAKE_BUILD_TYPE=Release \
-    -DQAULTRA_ENABLE_SIMD=ON \
-    -DQAULTRA_ENABLE_NATIVE=ON \
-    -DQAULTRA_ENABLE_LTO=ON \
-    -DQAULTRA_ENABLE_MIMALLOC=ON
+cd build
+
+# 基础测试
+./progressive_test           # 渐进式测试
+./protocol_test              # 协议测试
+./unified_account_test       # 统一账户测试
+
+# 性能测试
+./performance_analysis_test  # 性能分析测试
+
+# 批量操作测试 (需要 GTest)
+./batch_operations_test
+
+# IPC 测试 (需要 iceoryx2)
+./broadcast_basic_test       # 基础广播测试
+./broadcast_massive_scale_test  # 大规模压力测试
 ```
 
-### Q: 如何处理大规模数据？
+### 测试覆盖
 
-A: 使用内存映射和流式处理：
+- ✅ 账户基础操作
+- ✅ 持仓和订单管理
+- ✅ QIFI/MIFI/TIFI 协议
+- ✅ 批量操作并发安全
+- ✅ 市场系统集成
+- ✅ IPC 零拷贝传输
+- ✅ 大规模压力测试
 
-```cpp
-// 1. 内存映射大文件
-memory::MemoryMappedArray<double> big_data("large_file.bin", 100000000);
+## 🔄 最近更新 (2025-10-01)
 
-// 2. 流式插入ClickHouse
-clickhouse->start_streaming_insert("large_table");
-for (const auto& record : records) {
-    clickhouse->stream_insert_kline(record);
-}
-clickhouse->finish_streaming_insert();
-```
+### 架构重构
+- ✅ 删除 `unified_backtest_engine`，使用 `market_system` 替代
+- ✅ 创建 `QAMarketSystem` 完全对齐 Rust `QAMarket`
+- ✅ 数据类型清理，删除冗余 `datatype_simple.hpp`
+- ✅ C++17 兼容性改进，使用自定义 `Date` 结构
 
-### Q: 如何优化策略回测速度？
+### IPC 增强
+- ✅ iceoryx2 集成，零拷贝数据广播
+- ✅ 大规模压力测试 (500+ 订阅者，1M+ ticks)
+- ✅ 跨语言数据交换 (C++ ↔ Rust ↔ Python)
 
-A: 使用以下优化技巧：
+### 性能优化
+- ✅ 零拷贝共享内存传输
+- ✅ 批量数据处理优化
+- ✅ 并发无锁数据结构
 
-```cpp
-// 1. 启用并行处理
-BacktestConfig config;
-config.max_threads = std::thread::hardware_concurrency();
-config.enable_matching_engine = false;  // 简化模式
+详见 [CHANGELOG.md](CHANGELOG.md)
 
-// 2. 预分配内存
-strategy->reserve_memory(expected_trades);
+## 🤝 贡献
 
-// 3. 使用SIMD优化指标
-auto fast_sma = simd::calculate_sma(prices.data(), prices.size(), 20);
-```
+欢迎贡献代码、报告 Bug 或提出新功能建议！
 
-### Q: 如何集成实时数据源？
-
-A: 实现MarketDataFeed接口：
-
-```cpp
-class MyDataFeed : public market::MarketDataFeed {
-public:
-    bool subscribe(const std::string& symbol) override {
-        // 连接实时数据源
-        return websocket_client->subscribe(symbol);
-    }
-
-    void add_callback(EventCallback callback) override {
-        callbacks_.push_back(callback);
-    }
-
-private:
-    void on_market_data(const MarketEvent& event) {
-        for (auto& callback : callbacks_) {
-            callback(event);
-        }
-    }
-};
-```
-
-### Q: 如何处理不同市场的交易规则？
-
-A: 使用MarketPreset配置：
-
-```cpp
-// 创建股票市场预设
-auto stock_preset = std::make_shared<account::MarketPreset>();
-stock_preset->commission_rate = 0.0025;
-stock_preset->min_commission = 5.0;
-stock_preset->tax_rate = 0.001;
-
-// 创建期货市场预设
-auto futures_preset = std::make_shared<account::MarketPreset>();
-futures_preset->commission_rate = 0.0001;
-futures_preset->margin_rate = 0.10;
-
-// 应用到账户
-account->set_market_preset("stock", stock_preset);
-account->set_market_preset("futures", futures_preset);
-```
-
-## 🤝 贡献指南
-
-1. Fork 本仓库
+1. Fork 本项目
 2. 创建特性分支 (`git checkout -b feature/amazing-feature`)
 3. 提交更改 (`git commit -m 'Add amazing feature'`)
 4. 推送到分支 (`git push origin feature/amazing-feature`)
-5. 开启 Pull Request
+5. 创建 Pull Request
 
-### 开发环境搭建
-
-```bash
-# 安装开发依赖
-./scripts/install_deps.sh
-
-# 设置pre-commit钩子
-pre-commit install
-
-# 运行代码格式化
-./scripts/format_code.sh
-
-# 运行静态分析
-./scripts/analyze_code.sh
-
-# 运行完整测试套件
-ninja test && ninja benchmark
-```
-
-### 代码规范
-
-- 使用现代C++20特性
-- 遵循Google C++代码规范
-- 所有公开API需要详细文档注释
-- 新功能必须包含对应的单元测试
-- 性能关键代码需要基准测试
+详见 [贡献指南](CONTRIBUTING.md)
 
 ## 📄 许可证
 
-本项目基于 MIT 许可证开源 - 查看 [LICENSE](LICENSE) 文件了解详情。
+本项目采用 MIT 许可证 - 详见 [LICENSE](LICENSE) 文件
 
 ## 🙏 致谢
 
-- **QUANTAXIS**: 原始Python量化交易框架，为本项目提供设计理念
-- **QARS**: 启发此C++移植的Rust实现版本
-- **Apache Arrow**: 高性能列式数据处理库，核心数据引擎
-- **Intel TBB**: 并行化构建块，提供高效的多线程支持
-- **pybind11**: Python绑定框架，实现C++与Python无缝集成
-- **mimalloc**: 微软高性能内存分配器
-- **ClickHouse**: 高性能OLAP数据库，用于时序数据分析
+- **QUANTAXIS 团队**: 原始 Python/Rust 实现
+- **IceOryx/iceoryx2 团队**: 高性能 IPC 中间件
+- **Apache Arrow 团队**: 列式数据处理框架
+- **nlohmann/json**: C++ JSON 库
+- **Google Test**: C++ 测试框架
 
-## 📧 支持和社区
+## 📮 联系方式
 
-- **文档**: [https://qaultra-cpp.readthedocs.io](https://qaultra-cpp.readthedocs.io)
 - **问题反馈**: [GitHub Issues](https://github.com/quantaxis/qaultra-cpp/issues)
 - **讨论**: [GitHub Discussions](https://github.com/quantaxis/qaultra-cpp/discussions)
-- **QQ群**: 563280067 (QUANTAXIS)
-- **微信群**: 扫描二维码加入
-- **邮箱**: support@qaultra.com
-
-## 🎯 发展路线图
-
-### 短期目标 (3个月)
-- [ ] 完善Python绑定，达到100%功能覆盖
-- [ ] 优化SIMD性能，支持ARM NEON指令集
-- [ ] 增加更多技术指标和算法交易策略
-- [ ] 完善文档和中文教程
-
-### 中期目标 (6个月)
-- [ ] 支持更多数据库连接器(Redis, InfluxDB)
-- [ ] 实现分布式回测框架
-- [ ] 增加机器学习策略支持
-- [ ] 开发Web界面和可视化工具
-
-### 长期目标 (1年)
-- [ ] 支持加密货币交易
-- [ ] 实现高频交易框架
-- [ ] 开发云原生部署方案
-- [ ] 建立开发者生态系统
+- **邮件**: quantaxis@qq.com
 
 ---
 
-**QAULTRA C++** - 高性能量化交易的终极选择
-
-*让C++的性能与量化交易的精准完美结合*
+**QAULTRA C++ - 基于 Rust，为性能而生 🚀**

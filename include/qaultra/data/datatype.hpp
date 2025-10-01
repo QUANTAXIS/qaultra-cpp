@@ -143,7 +143,7 @@ struct FutureCn1Min {
  * @brief 中国期货日线数据结构 - 完全匹配Rust FutureCnDay
  */
 struct FutureCnDay {
-    std::chrono::year_month_day date;       // 日期
+    Date date;                              // 日期 (匹配 Rust chrono::NaiveDate)
     std::string order_book_id;              // 合约代码
     float limit_up;                         // 涨停价
     float limit_down;                       // 跌停价
@@ -161,7 +161,7 @@ struct FutureCnDay {
      * @brief 构造函数
      */
     FutureCnDay() = default;
-    FutureCnDay(const std::chrono::year_month_day& date,
+    FutureCnDay(const Date& date,
                 const std::string& order_book_id,
                 float limit_up, float limit_down, float open_interest,
                 float prev_settlement, float settlement,
@@ -290,33 +290,32 @@ namespace utils {
     /**
      * @brief 日期转换为字符串
      */
-    std::string date_to_string(const std::chrono::year_month_day& date);
+    std::string date_to_string(const Date& date);
 
     /**
      * @brief 字符串转换为日期
      */
-    std::chrono::year_month_day string_to_date(const std::string& str);
+    Date string_to_date(const std::string& str);
 
     /**
      * @brief 计算两个时间点之间的交易日数
      */
-    int trading_days_between(const std::chrono::year_month_day& start,
-                           const std::chrono::year_month_day& end);
+    int trading_days_between(const Date& start, const Date& end);
 
     /**
      * @brief 判断是否为交易日
      */
-    bool is_trading_day(const std::chrono::year_month_day& date);
+    bool is_trading_day(const Date& date);
 
     /**
      * @brief 获取下一个交易日
      */
-    std::chrono::year_month_day next_trading_day(const std::chrono::year_month_day& date);
+    Date next_trading_day(const Date& date);
 
     /**
      * @brief 获取上一个交易日
      */
-    std::chrono::year_month_day prev_trading_day(const std::chrono::year_month_day& date);
+    Date prev_trading_day(const Date& date);
 }
 
 } // namespace qaultra::data

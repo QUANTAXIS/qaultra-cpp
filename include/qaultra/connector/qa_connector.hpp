@@ -8,7 +8,7 @@
 namespace qaultra::connector {
 
 // 前向声明
-class QAAccount;
+class QA_Account;
 
 /**
  * @brief QA专用MongoDB连接器
@@ -35,15 +35,15 @@ public:
     bool save_sim_qifi_slice(const protocol::qifi::QIFI& slice);
 
     // Account操作
-    std::unique_ptr<QAAccount> get_account(const std::string& account_cookie);
-    bool save_account(const QAAccount& account);
-    bool save_account_history(const QAAccount& account);
+    std::unique_ptr<QA_Account> get_account(const std::string& account_cookie);
+    bool save_account(const QA_Account& account);
+    bool save_account_history(const QA_Account& account);
 
     // 账户列表
     std::vector<std::string> get_account_list();
 
     // 批量操作
-    bool save_multiple_accounts(const std::vector<std::reference_wrapper<const QAAccount>>& accounts);
+    bool save_multiple_accounts(const std::vector<std::reference_wrapper<const QA_Account>>& accounts);
 
     // 数据库统计
     struct DatabaseStats {
@@ -212,8 +212,8 @@ public:
     QAClickHouseClient* get_clickhouse_client();
 
     // 统一账户操作
-    std::unique_ptr<QAAccount> get_account(const std::string& account_cookie);
-    bool save_account(const QAAccount& account, bool sync_to_clickhouse = false);
+    std::unique_ptr<QA_Account> get_account(const std::string& account_cookie);
+    bool save_account(const QA_Account& account, bool sync_to_clickhouse = false);
 
     // 数据同步
     bool sync_account_to_clickhouse(const std::string& account_cookie);

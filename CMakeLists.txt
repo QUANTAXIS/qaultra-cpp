@@ -146,12 +146,11 @@ endif()
 if(QAULTRA_USE_FULL_FEATURES)
     list(APPEND UNIFIED_SOURCES
         # 市场模块（只包含存在的文件）
+        "src/market/market_system.cpp"
         "src/market/simmarket.cpp"
         "src/market/match_engine.cpp"
 
         # 账户扩展功能
-        "src/account/account.cpp"
-        "src/account/account_full.cpp"
         "src/account/order.cpp"
         "src/account/position.cpp"
 
@@ -249,7 +248,6 @@ if(QAULTRA_BUILD_TESTS)
             tests/test_order.cpp
             tests/test_market_preset.cpp
             tests/test_qifi_protocol.cpp
-            tests/test_unified_backtest_engine.cpp
             tests/test_event_engine.cpp
             tests/test_trading_integration.cpp
             tests/test_portfolio_management.cpp
@@ -284,8 +282,6 @@ if(QAULTRA_BUILD_TESTS)
     target_link_libraries(protocol_test qaultra)
 
     # 统一回测引擎测试
-    add_executable(unified_backtest_test tests/test_unified_backtest.cpp)
-    target_link_libraries(unified_backtest_test qaultra)
 
     # 统一账户测试
     add_executable(unified_account_test tests/test_unified_account.cpp)

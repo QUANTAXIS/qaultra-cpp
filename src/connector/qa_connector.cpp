@@ -1,5 +1,5 @@
 #include "qaultra/connector/qa_connector.hpp"
-#include "qaultra/account/account.hpp"
+#include "qaultra/account/qa_account.hpp"
 #include <iostream>
 #include <iomanip>
 #include <sstream>
@@ -140,7 +140,7 @@ bool QAMongoClient::save_sim_qifi_slice(const protocol::qifi::QIFI& slice) {
     return result.success;
 }
 
-std::unique_ptr<QAAccount> QAMongoClient::get_account(const std::string& account_cookie) {
+std::unique_ptr<QA_Account> QAMongoClient::get_account(const std::string& account_cookie) {
     auto qifi_opt = get_qifi(account_cookie);
     if (!qifi_opt.has_value()) {
         return nullptr;
@@ -152,14 +152,14 @@ std::unique_ptr<QAAccount> QAMongoClient::get_account(const std::string& account
     return nullptr;
 }
 
-bool QAMongoClient::save_account(const QAAccount& account) {
+bool QAMongoClient::save_account(const QA_Account& account) {
     // 这里需要实现从QAAccount获取QIFI的逻辑
     // 返回false作为占位符，实际需要根据QAAccount的实现来完成
     std::cout << "保存QAAccount" << std::endl;
     return false;
 }
 
-bool QAMongoClient::save_account_history(const QAAccount& account) {
+bool QAMongoClient::save_account_history(const QA_Account& account) {
     // 类似save_account，但保存到历史记录
     std::cout << "保存QAAccount历史记录" << std::endl;
     return false;
@@ -188,7 +188,7 @@ std::vector<std::string> QAMongoClient::get_account_list() {
     return account_list;
 }
 
-bool QAMongoClient::save_multiple_accounts(const std::vector<std::reference_wrapper<const QAAccount>>& accounts) {
+bool QAMongoClient::save_multiple_accounts(const std::vector<std::reference_wrapper<const QA_Account>>& accounts) {
     if (!is_connected() || accounts.empty()) {
         return false;
     }
@@ -733,14 +733,14 @@ QAClickHouseClient* QADatabaseManager::get_clickhouse_client() {
     return clickhouse_client_.get();
 }
 
-std::unique_ptr<QAAccount> QADatabaseManager::get_account(const std::string& account_cookie) {
+std::unique_ptr<QA_Account> QADatabaseManager::get_account(const std::string& account_cookie) {
     if (mongo_client_) {
         return mongo_client_->get_account(account_cookie);
     }
     return nullptr;
 }
 
-bool QADatabaseManager::save_account(const QAAccount& account, bool sync_to_clickhouse) {
+bool QADatabaseManager::save_account(const QA_Account& account, bool sync_to_clickhouse) {
     bool success = true;
 
     if (mongo_client_) {
