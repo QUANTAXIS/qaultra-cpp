@@ -5,6 +5,8 @@ bin/
 lib/
 dist/
 out/
+.cache/
+
 
 # CMake generated files
 CMakeCache.txt
