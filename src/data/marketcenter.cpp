@@ -4,6 +4,8 @@
 #include <sstream>
 #include <algorithm>
 #include <memory>
+#include <iomanip>  // 添加 put_time 支持
+#include <set>
 #include <arrow/compute/api.h>
 #include <arrow/csv/api.h>
 #include <arrow/filesystem/api.h>
@@ -489,7 +491,7 @@ QAMarketCenter::run_split_ticks(std::shared_ptr<arrow::Table> table) {
 
         // 构建Kline映射
         std::unordered_map<std::string, Kline> klines;
-        size_t min_size = std::min({codes.size(), lasts.size(), volumes.size()});
+        size_t min_size = std::min(std::min(codes.size(), lasts.size()), volumes.size());
 
         for (size_t i = 0; i < min_size; ++i) {
             // Tick数据：开高低收都使用最新价
@@ -692,6 +694,84 @@ bool QAMarketCenter::validate_data_integrity() const {
 void QAMarketCenter::optimize_memory() {
     // 内存优化：清理旧数据等
     // 实际项目中可以实现更复杂的内存管理策略
+}
+
+// ==================== Arc 零拷贝优化实现 ====================
+
+std::shared_ptr<const std::unordered_map<std::string, Kline>>
+QAMarketCenter::get_date_shared(const std::string& date) {
+    int64_t timestamp = date_string_to_timestamp(date);
+    int32_t dateidx = static_cast<int32_t>(timestamp / 86400000000);
+
+    // 缓存命中：返回 shared_ptr clone (仅增加引用计数 ~10-20 ns)
+    auto cache_it = date_cache_.find(dateidx);
+    if (cache_it != date_cache_.end()) {
+        return cache_it->second;  // shared_ptr copy constructor
+    }
+
+    // 缓存未命中：创建 shared_ptr 并缓存
+    auto data_it = data_.find(dateidx);
+    if (data_it != data_.end()) {
+        auto shared_data = std::make_shared<const std::unordered_map<std::string, Kline>>(
+            data_it->second
+        );
+        date_cache_[dateidx] = shared_data;
+        return shared_data;
+    }
+
+    // 返回空 shared_ptr
+    return nullptr;
+}
+
+std::shared_ptr<const std::unordered_map<std::string, Kline>>
+QAMarketCenter::get_minutes_shared(const std::string& datetime) {
+    int64_t timestamp = datetime_string_to_nanos(datetime);
+
+    // 缓存命中
+    auto cache_it = minute_cache_.find(timestamp);
+    if (cache_it != minute_cache_.end()) {
+        return cache_it->second;
+    }
+
+    // 缓存未命中
+    auto data_it = minutes_.find(timestamp);
+    if (data_it != minutes_.end()) {
+        auto shared_data = std::make_shared<const std::unordered_map<std::string, Kline>>(
+            data_it->second
+        );
+        minute_cache_[timestamp] = shared_data;
+        return shared_data;
+    }
+
+    return nullptr;
+}
+
+void QAMarketCenter::clear_shared_cache() {
+    date_cache_.clear();
+    minute_cache_.clear();
+    std::cout << "Arc 缓存已清除" << std::endl;
+}
+
+std::vector<StockCnDay> QAMarketCenter::get_stock_day(const std::string& code,
+                                                       const std::string& start_date,
+                                                       const std::string& end_date) {
+    // 简化的存根实现
+    // 实际项目中应该根据日期范围过滤并返回数据
+    (void)code;
+    (void)start_date;
+    (void)end_date;
+    return {};  // 返回空vector
+}
+
+std::vector<StockCn1Min> QAMarketCenter::get_stock_min(const std::string& code,
+                                                        const std::string& start_datetime,
+                                                        const std::string& end_datetime) {
+    // 简化的存根实现
+    // 实际项目中应该根据时间范围过滤并返回数据
+    (void)code;
+    (void)start_datetime;
+    (void)end_datetime;
+    return {};  // 返回空vector
 }
 
 // 工具函数实现

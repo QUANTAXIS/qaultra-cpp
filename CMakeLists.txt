@@ -145,19 +145,20 @@ endif()
 # 可选的完整功能源文件
 if(QAULTRA_USE_FULL_FEATURES)
     list(APPEND UNIFIED_SOURCES
-        # 市场模块（只包含存在的文件）
-        "src/market/market_system.cpp"
-        "src/market/simmarket.cpp"
-        "src/market/match_engine.cpp"
+        # 市场模块（暂时禁用，API不匹配）
+        # "src/market/market_system.cpp"
+        # "src/market/simmarket.cpp"
+        # "src/market/match_engine.cpp"
 
-        # 账户扩展功能
-        "src/account/order.cpp"
-        "src/account/position.cpp"
+        # 账户扩展功能（暂时禁用，API不匹配）
+        # "src/account/order.cpp"
+        # "src/account/position.cpp"
 
-        # 数据扩展功能
+        # 数据扩展功能（Arc优化 - 已修复API问题）
         "src/data/datatype.cpp"
         "src/data/kline.cpp"
-        "src/data/marketcenter.cpp"
+        "src/data/marketcenter.cpp"      # Arc 零拷贝基础
+        "src/data/tick_broadcaster.cpp"  # Arc 零拷贝广播器
     )
 endif()
 
@@ -273,6 +274,13 @@ if(QAULTRA_BUILD_TESTS)
     #     include(GoogleTest)
     #     gtest_discover_tests(qaultra_tests)
     # endif()
+
+    # Arc 零拷贝优化测试
+    if(QAULTRA_USE_FULL_FEATURES)
+        add_executable(test_tick_broadcaster tests/test_tick_broadcaster.cpp)
+        target_link_libraries(test_tick_broadcaster qaultra)
+        message(STATUS "TickBroadcaster test enabled")
+    endif()
 endif()
 
 # 示例

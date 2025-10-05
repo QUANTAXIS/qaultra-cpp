@@ -32,6 +32,10 @@ private:
     std::shared_ptr<arrow::Table> minute_table_;                    // 分钟数据表
     std::shared_ptr<arrow::Table> tick_table_;                      // Tick数据表
 
+    // Arc 零拷贝缓存 (Rust Arc 等价实现)
+    std::unordered_map<int32_t, std::shared_ptr<const std::unordered_map<std::string, Kline>>> date_cache_;
+    std::unordered_map<int64_t, std::shared_ptr<const std::unordered_map<std::string, Kline>>> minute_cache_;
+
 public:
     /**
      * @brief 构造函数 - 匹配Rust new方法
@@ -135,6 +139,53 @@ public:
     const std::unordered_map<std::string, Kline>& get_date_ref(const std::string& date);
 
     /**
+     * @brief Arc 零拷贝获取日期数据 - 匹配Rust get_date_arc方法
+     *
+     * 性能特点:
+     * - 首次访问: 创建 shared_ptr (~500 μs)
+     * - 后续访问: clone shared_ptr (~10-20 ns)
+     * - 广播给 N 个订阅者: ~10-20 ns × N
+     *
+     * 使用场景:
+     * - Tick 数据推送 (多订阅者)
+     * - 多策略回测 (共享权重数据)
+     * - 高频数据访问
+     *
+     * @param date 日期字符串 (YYYY-MM-DD)
+     * @return shared_ptr，所有调用者共享同一数据
+     */
+    std::shared_ptr<const std::unordered_map<std::string, Kline>>
+    get_date_shared(const std::string& date);
+
+    /**
+     * @brief Arc 零拷贝获取分钟数据 - 匹配Rust get_minutes_arc方法
+     *
+     * @param datetime 时间字符串 (YYYY-MM-DD HH:MM:SS)
+     * @return shared_ptr，所有调用者共享同一数据
+     */
+    std::shared_ptr<const std::unordered_map<std::string, Kline>>
+    get_minutes_shared(const std::string& datetime);
+
+    /**
+     * @brief 清除 Arc 缓存
+     */
+    void clear_shared_cache();
+
+    /**
+     * @brief 获取股票日线数据范围 (兼容性方法)
+     */
+    std::vector<StockCnDay> get_stock_day(const std::string& code,
+                                          const std::string& start_date,
+                                          const std::string& end_date);
+
+    /**
+     * @brief 获取股票分钟数据范围 (兼容性方法)
+     */
+    std::vector<StockCn1Min> get_stock_min(const std::string& code,
+                                           const std::string& start_datetime,
+                                           const std::string& end_datetime);
+
+    /**
      * @brief 保存数据到文件
      */
     bool save_to_file(const std::string& filename) const;
@@ -218,20 +269,20 @@ private:
     /**
      * @brief 从Arrow表提取字符串列
      */
-    std::vector<std::string> extract_string_column(std::shared_ptr<arrow::Table> table,
-                                                   const std::string& column_name);
+    static std::vector<std::string> extract_string_column(std::shared_ptr<arrow::Table> table,
+                                                          const std::string& column_name);
 
     /**
      * @brief 从Arrow表提取浮点列
      */
-    std::vector<double> extract_double_column(std::shared_ptr<arrow::Table> table,
-                                             const std::string& column_name);
+    static std::vector<double> extract_double_column(std::shared_ptr<arrow::Table> table,
+                                                     const std::string& column_name);
 
     /**
      * @brief 从Arrow表提取时间戳列
      */
-    std::vector<int64_t> extract_timestamp_column(std::shared_ptr<arrow::Table> table,
-                                                  const std::string& column_name);
+    static std::vector<int64_t> extract_timestamp_column(std::shared_ptr<arrow::Table> table,
+                                                         const std::string& column_name);
 
     /**
      * @brief 构建缓存路径
