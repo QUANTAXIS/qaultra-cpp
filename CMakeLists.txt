@@ -13,6 +13,7 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O2 -Wall -Wextra")
 option(QAULTRA_BUILD_TESTS "Build tests" ON)
 option(QAULTRA_BUILD_EXAMPLES "Build examples" OFF)
 option(QAULTRA_BUILD_BENCHMARKS "Build benchmarks" OFF)
+option(QAULTRA_BUILD_PYTHON "Build Python bindings" ON)
 option(QAULTRA_USE_ARROW "Use Apache Arrow" OFF)
 option(QAULTRA_USE_FULL_FEATURES "Use all features" OFF)
 option(QAULTRA_USE_ICEORYX "Use IceOryx for zero-copy IPC" ON)
@@ -94,6 +95,41 @@ if(QAULTRA_USE_ICEORYX2)
     else()
         message(WARNING "iceoryx2 not found. iceoryx2 IPC features will be disabled.")
         set(ICEORYX2_AVAILABLE FALSE)
+    endif()
+endif()
+
+# PyBind11 依赖 (Python bindings)
+if(QAULTRA_BUILD_PYTHON)
+    find_package(Python3 COMPONENTS Interpreter Development QUIET)
+
+    if(Python3_FOUND)
+        # Try to find pybind11 using python's pip installation
+        execute_process(
+            COMMAND ${Python3_EXECUTABLE} -c "import pybind11; print(pybind11.get_cmake_dir())"
+            OUTPUT_VARIABLE PYBIND11_CMAKE_DIR
+            OUTPUT_STRIP_TRAILING_WHITESPACE
+            ERROR_QUIET
+        )
+
+        if(PYBIND11_CMAKE_DIR)
+            set(pybind11_DIR ${PYBIND11_CMAKE_DIR})
+            find_package(pybind11 CONFIG QUIET)
+        endif()
+
+        if(pybind11_FOUND)
+            set(PYBIND11_AVAILABLE TRUE)
+            message(STATUS "PyBind11 found: Python ${Python3_VERSION}")
+            message(STATUS "Python include: ${Python3_INCLUDE_DIRS}")
+            message(STATUS "PyBind11 include: ${pybind11_INCLUDE_DIR}")
+        else()
+            message(WARNING "PyBind11 not found via pip. Python bindings will be disabled.")
+            message(WARNING "  Python3_FOUND: ${Python3_FOUND}")
+            message(WARNING "  pybind11_FOUND: ${pybind11_FOUND}")
+            set(PYBIND11_AVAILABLE FALSE)
+        endif()
+    else()
+        message(WARNING "Python3 not found. Python bindings will be disabled.")
+        set(PYBIND11_AVAILABLE FALSE)
     endif()
 endif()
 
@@ -333,6 +369,37 @@ if(Arrow_FOUND)
     message(STATUS "Cross-language qadataswap examples enabled")
 endif()
 
+# Python bindings
+if(PYBIND11_AVAILABLE AND QAULTRA_USE_FULL_FEATURES)
+    # Python module sources
+    set(PYTHON_BINDING_SOURCES
+        "python/qaultra_py.cpp"
+        "python/py_marketcenter.cpp"
+        "python/py_tick_broadcaster.cpp"
+    )
+
+    # Create Python module
+    pybind11_add_module(qaultra_py ${PYTHON_BINDING_SOURCES})
+
+    # Link against qaultra library and its dependencies
+    target_link_libraries(qaultra_py PRIVATE qaultra)
+
+    # If Arrow is available, also link Python module against Arrow
+    if(ARROW_AVAILABLE)
+        find_package(Parquet QUIET)
+        target_link_libraries(qaultra_py PRIVATE arrow_shared parquet_shared)
+    endif()
+
+    # Set output directory
+    set_target_properties(qaultra_py PROPERTIES
+        LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/python"
+    )
+
+    message(STATUS "Python bindings enabled")
+    message(STATUS "  Module: qaultra_py")
+    message(STATUS "  Output: ${CMAKE_BINARY_DIR}/python/qaultra_py*.so")
+endif()
+
 # 打印配置信息
 message(STATUS "")
 message(STATUS "QAULTRA Progressive Build Configuration:")
@@ -340,6 +407,7 @@ message(STATUS "======================================")
 message(STATUS "  Version: ${PROJECT_VERSION}")
 message(STATUS "  C++ Standard: ${CMAKE_CXX_STANDARD}")
 message(STATUS "  Build Tests: ${QAULTRA_BUILD_TESTS}")
+message(STATUS "  Build Python: ${QAULTRA_BUILD_PYTHON}")
 message(STATUS "  Use Arrow: ${QAULTRA_USE_ARROW}")
 message(STATUS "  Use Full Features: ${QAULTRA_USE_FULL_FEATURES}")
 message(STATUS "  Use IceOryx: ${QAULTRA_USE_ICEORYX}")
@@ -347,4 +415,5 @@ message(STATUS "  Use iceoryx2: ${QAULTRA_USE_ICEORYX2}")
 message(STATUS "  Arrow Available: ${ARROW_AVAILABLE}")
 message(STATUS "  IceOryx Available: ${ICEORYX_AVAILABLE}")
 message(STATUS "  iceoryx2 Available: ${ICEORYX2_AVAILABLE}")
+message(STATUS "  PyBind11 Available: ${PYBIND11_AVAILABLE}")
 message(STATUS "")
